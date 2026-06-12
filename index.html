@@ -1,0 +1,2462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.telegram.org; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+<title>Hermes Terminal</title>
+<script src="https://telegram.org/js/telegram-web-app.js?62" integrity="sha384-1XuC9S4cgk6RH1oCsL2diDRwLiiivu/oZHNfxYUitEFuiKpP5ceNbzu220KKrcK+" crossorigin="anonymous"></script>
+<style>
+:root {
+  --bg: var(--tg-theme-bg-color, #0d0d14);
+  --text: var(--tg-theme-text-color, #d4d4e8);
+  --hint: var(--tg-theme-hint-color, #555570);
+  --btn: var(--tg-theme-button-color, #4f46e5);
+  --btn-text: var(--tg-theme-button-text-color, #fff);
+  --sec-bg: var(--tg-theme-secondary-bg-color, #13131f);
+  --hdr-bg: var(--tg-theme-header-bg-color, #0a0a12);
+  --destructive: var(--tg-theme-destructive-text-color, #ef4444);
+  --accent: var(--tg-theme-accent-text-color, #818cf8);
+  --section-bg: var(--tg-theme-section-bg-color, #16162a);
+  --safe-top: var(--tg-safe-area-inset-top, 0px);
+  --safe-bottom: var(--tg-safe-area-inset-bottom, 0px);
+  --link: #a5b4fc;
+  --border: rgba(255,255,255,.07);
+  --menu-w: 78vw;
+  --header-h: calc(var(--safe-top) + 44px);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'SF Mono','Fira Code','Cascadia Code','Menlo',monospace;
+  background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ─── DRAWER OVERLAY ─────────────────────────────────────────────────────── */
+.drawer-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.6);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+/* ─── MENU DRAWER ───────────────────────────────────────────────────────── */
+.menu-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--menu-w); max-width: 320px;
+  background: var(--sec-bg);
+  z-index: 51;
+  display: flex; flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  border-right: 1px solid var(--border);
+}
+.menu-drawer.open { transform: translateX(0); }
+
+.drawer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(var(--safe-top) + 12px) 16px 10px;
+  background: var(--hdr-bg);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-title { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+.drawer-close {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(255,255,255,.06); border: none;
+  color: var(--hint); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.drawer-search {
+  padding: 8px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-search input {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 7px 12px;
+  color: var(--text); font-family: inherit; font-size: 12px; outline: none;
+}
+.drawer-search input::placeholder { color: var(--hint); }
+.drawer-search input:focus { border-color: var(--btn); }
+
+.drawer-scroll {
+  flex: 1; overflow-y: auto; padding: 6px 0 20px;
+  -webkit-overflow-scrolling: touch;
+}
+.drawer-scroll::-webkit-scrollbar { width: 2px; }
+.drawer-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+.cmd-category {
+  padding: 10px 16px 4px;
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--hint);
+}
+.cmd-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px; cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  transition: background .1s;
+}
+.cmd-item:active { background: rgba(79,70,229,.15); }
+.cmd-item.hidden { display: none; }
+.cmd-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(79,70,229,.15); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.cmd-info { flex: 1; min-width: 0; }
+.cmd-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.cmd-desc { font-size: 10px; color: var(--hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmd-badge {
+  font-size: 8px; padding: 2px 5px; border-radius: 5px;
+  background: rgba(255,255,255,.06); color: var(--hint);
+  flex-shrink: 0;
+}
+.cmd-args { font-size: 9px; color: var(--accent); flex-shrink: 0; }
+
+.drawer-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 10px; color: var(--hint);
+  text-align: center;
+}
+
+/* ─── HEADER BAR ────────────────────────────────────────────────────────── */
+.header-bar {
+  display: flex; align-items: center;
+  background: var(--hdr-bg);
+  padding: var(--safe-top) 12px 0;
+  flex-shrink: 0; z-index: 10;
+  height: var(--header-h);
+  gap: 8px;
+}
+.menu-btn {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: rgba(255,255,255,.05); border: none;
+  color: var(--text); cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.menu-btn:active { background: rgba(255,255,255,.1); }
+.menu-btn svg { width: 18px; height: 18px; }
+
+.header-title {
+  flex: 1; font-size: 13px; font-weight: 700;
+  letter-spacing: .3px; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.conn-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--hint); transition: background .3s; flex-shrink: 0;
+}
+.conn-dot.online { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+.conn-dot.offline { background: var(--destructive); }
+.conn-label.online { color: #22c55e; }
+.conn-label.offline { color: var(--destructive); }
+.conn-label { font-size: 10px; color: var(--hint); white-space: nowrap; }
+.model-chip {
+  font-size: 9px; padding: 2px 7px; border-radius: 8px;
+  background: rgba(79,70,229,.2); color: var(--accent); font-weight: 600;
+}
+
+/* ─── CONTEXT BAR (TUI-style) ─────────────────────────────────────────── */
+.header-info-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px 6px; background: var(--hdr-bg);
+  font-size: 10px; color: var(--hint); flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+.ctx-model { color: var(--text); font-weight: 700; white-space: nowrap; }
+.ctx-sep { color: rgba(255,255,255,.15); }
+.ctx-label { white-space: nowrap; }
+.ctx-bar-wrap {
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.ctx-bar {
+  display: inline-block; width: 48px; height: 6px;
+  background: rgba(255,255,255,.08); border-radius: 3px;
+  overflow: hidden; vertical-align: middle;
+}
+.ctx-fill {
+  display: block; height: 100%; border-radius: 3px;
+  transition: width .3s ease, background .3s ease;
+}
+.ctx-fill.good { background: #22c55e; }
+.ctx-fill.warn { background: #eab308; }
+.ctx-fill.bad { background: #f97316; }
+.ctx-fill.critical { background: #ef4444; }
+.ctx-pct { font-weight: 700; min-width: 28px; text-align: right; }
+.ctx-pct.good { color: #22c55e; }
+.ctx-pct.warn { color: #eab308; }
+.ctx-pct.bad { color: #f97316; }
+.ctx-pct.critical { color: #ef4444; }
+.ctx-duration { margin-left: auto; white-space: nowrap; color: var(--hint); }
+
+/* ─── TAB BAR ───────────────────────────────────────────────────────────── */
+.tab-bar { display: flex; background: var(--hdr-bg); flex-shrink: 0; }
+.tab {
+  flex: 1; padding: 9px 4px; text-align: center; font-size: 10px; font-weight: 700;
+  color: var(--hint); text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 2px solid transparent; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: all .15s;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--btn); }
+.tab:active { opacity: .7; }
+.tab-icon { font-size: 14px; }
+
+/* ─── PANELS ─────────────────────────────────────────────────────────────── */
+.panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.panel.active { display: flex; }
+
+/* ─── TERMINAL CHAT ─────────────────────────────────────────────────────── */
+.chat-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; position: relative; contain: size layout; will-change: transform; }
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 10px 12px 6px;
+  -webkit-overflow-scrolling: touch; contain: layout style;
+}
+.msg { margin-bottom: 8px; max-width: 100%; animation: fadeIn .15s ease-out; position: relative; }
+.msg-user { text-align: right; }
+.msg-bubble {
+  display: inline-block; padding: 7px 11px; border-radius: 12px;
+  font-size: 13px; line-height: 1.55; word-break: break-word;
+  white-space: pre-wrap; max-width: 88%; text-align: left;
+}
+.msg-user .msg-bubble {
+  background: var(--btn); color: var(--btn-text); border-bottom-right-radius: 4px;
+}
+.msg-agent .msg-bubble {
+  background: var(--section-bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px;
+  border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+.msg-system .msg-bubble { background: transparent; color: var(--hint); font-size: 11px; padding: 2px 0; }
+.msg-command .msg-bubble {
+  background: rgba(79,70,229,.1); color: var(--accent);
+  border: 1px solid rgba(79,70,229,.2);
+  border-radius: 8px; font-size: 12px; padding: 8px 11px;
+}
+.msg-time { font-size: 9px; color: var(--hint); margin-top: 1px; padding: 0 4px; }
+.msg-user .msg-time { text-align: right; }
+
+/* Message overflow menu */
+.msg-menu {
+  position: absolute; top: -4px; right: 4px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(255,255,255,.07); border: none;
+  color: var(--hint); font-size: 12px; cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  z-index: 5;
+}
+.msg:hover .msg-menu, .msg-agent:hover .msg-menu { display: flex; }
+.msg-menu:active { background: rgba(255,255,255,.12); }
+
+/* Code blocks */
+.msg-bubble code {
+  background: rgba(0,0,0,.3); border-radius: 4px; padding: 1px 5px;
+  font-size: 11px; color: #86efac; font-family: inherit;
+}
+.msg-bubble pre {
+  background: rgba(0,0,0,.3); border-radius: 6px; padding: 8px 10px;
+  margin: 5px 0; overflow-x: auto; font-size: 11px; line-height: 1.5;
+}
+.msg-bubble pre code { background: none; padding: 0; color: inherit; border-radius: 0; }
+.msg-bubble a { color: var(--link); text-decoration: underline; }
+.msg-bubble img.msg-img {
+  max-width: 100%; border-radius: 8px; margin: 4px 0;
+  display: block; max-height: 200px; object-fit: contain;
+}
+
+/* Tool call bubbles */
+.msg-tool {
+  background: var(--sec-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 7px 11px; margin: 4px 0;
+  font-size: 11px; max-width: 90%;
+}
+.msg-tool .tool-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.msg-tool .tool-icon { font-size: 12px; }
+.msg-tool .tool-name { color: var(--accent); font-weight: 700; font-size: 11px; }
+.msg-tool .tool-status { margin-left: auto; font-size: 9px; color: var(--hint); }
+.msg-tool .tool-preview { color: var(--hint); font-size: 10px; white-space: pre-wrap; }
+
+/* Thinking animation */
+.thinking-box {
+  background: var(--section-bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 14px;
+  display: inline-flex; flex-direction: column;
+  gap: 5px; min-width: 180px; max-width: 260px;
+}
+.thinking-cat { font-size: 12px; line-height: 1.35; color: var(--text); font-family: inherit; white-space: pre; overflow: hidden; }
+.thinking-frame { display: inline-block; min-height: 17px; }
+.thinking-subtext { font-size: 10px; color: var(--hint); margin-top: 1px; }
+.thinking-spinner {
+  display: inline-block; width: 9px; height: 9px;
+  border: 2px solid var(--hint); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .6s linear infinite;
+  vertical-align: middle; margin-right: 4px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Streaming indicator dot */
+.stream-dot::after {
+  content: ' \25CF'; display: inline; color: var(--accent);
+  animation: streamPulse 1s ease-in-out infinite;
+}
+@keyframes streamPulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+
+/* Send button streaming state */
+.send-btn.streaming {
+  background: var(--destructive, #ef4444);
+  animation: btnPulse 1.2s ease-in-out infinite;
+}
+@keyframes btnPulse { 0%,100% { opacity: 1; } 50% { opacity: .7; } }
+
+/* Scroll-to-bottom button */
+.scroll-btn {
+  position: absolute; bottom: 8px; right: 12px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--btn); color: var(--btn-text); border: none;
+  font-size: 14px; cursor: pointer; display: none;
+  align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.scroll-btn.visible { display: flex; }
+
+/* ─── CHAT INPUT BAR ────────────────────────────────────────────────────── */
+.chat-input-bar {
+  display: flex; gap: 8px; padding: 8px 10px;
+  padding-bottom: calc(8px + var(--safe-bottom));
+  background: var(--sec-bg);
+  border-top: 1px solid var(--border); flex-shrink: 0;
+  align-items: flex-end;
+}
+.attach-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,.06); border: none;
+  color: var(--hint); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .15s;
+}
+.attach-btn:active { background: rgba(255,255,255,.1); }
+.chat-input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 9px 14px; color: var(--text);
+  font-family: inherit; font-size: 13px; outline: none; resize: none;
+  max-height: 120px; min-height: 38px; line-height: 1.4;
+}
+.chat-input::placeholder { color: var(--hint); }
+.chat-input:focus { border-color: var(--btn); }
+.send-btn {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--btn);
+  color: var(--btn-text); border: none; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.send-btn:active { opacity: .7; }
+.send-btn:disabled { opacity: .4; }
+.hidden-input { display: none; }
+.attach-preview {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(255,255,255,.08); border-radius: 8px;
+  padding: 3px 8px; max-width: 160px; overflow: hidden;
+}
+.attach-name {
+  font-size: 11px; color: var(--accent); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.attach-remove {
+  background: none; border: none; color: var(--hint);
+  font-size: 12px; cursor: pointer; padding: 0 2px; flex-shrink: 0;
+}
+.attach-remove:hover { color: var(--destructive); }
+
+/* Command suggest */
+.cmd-suggest {
+  position: absolute; bottom: 58px; left: 10px; right: 10px;
+  background: var(--sec-bg); border: 1px solid var(--border);
+  border-radius: 12px; max-height: 200px; overflow-y: auto;
+  z-index: 20; display: none;
+}
+.cmd-suggest.visible { display: block; }
+.cmd-suggest-item {
+  padding: 8px 14px; cursor: pointer; font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+}
+.cmd-suggest-item:active, .cmd-suggest-item.selected { background: rgba(79,70,229,.15); }
+.cmd-suggest-item .cmd-name { color: var(--accent); font-weight: 600; }
+.cmd-suggest-item .cmd-desc { color: var(--hint); margin-left: 8px; }
+
+/* ─── STATUS PANEL ──────────────────────────────────────────────────────── */
+.status-bar { display: flex; gap: 6px; padding: 10px 14px; overflow-x: auto; flex-shrink: 0; }
+.status-chip {
+  flex-shrink: 0; padding: 5px 10px; border-radius: 16px;
+  font-size: 10px; font-weight: 700; display: flex; align-items: center; gap: 5px;
+}
+.status-chip.ok { background: rgba(34,197,94,.15); color: #22c55e; }
+.status-chip.warn { background: rgba(245,158,11,.15); color: #f59e0b; }
+.status-chip.error { background: rgba(239,68,68,.15); color: #ef4444; }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; animation: pulse 2s infinite; }
+.ok .status-dot { background: #22c55e; }
+.warn .status-dot { background: #f59e0b; }
+.error .status-dot { background: #ef4444; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+.panel-scroll { flex: 1; overflow-y: auto; padding: 0 0 20px; -webkit-overflow-scrolling: touch; }
+.panel-scroll::-webkit-scrollbar { width: 2px; }
+.panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+.section { margin: 0 14px 10px; background: var(--section-bg); border-radius: 14px; overflow: hidden; }
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px 6px;
+}
+.section-header h2 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--hint); }
+.section-header .badge {
+  font-size: 9px; padding: 2px 7px; border-radius: 8px;
+  background: var(--btn); color: var(--btn-text); font-weight: 600;
+}
+
+/* Gauge items */
+.gauge-row { padding: 8px 14px; border-top: 1px solid rgba(255,255,255,.04); }
+.gauge-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+.gauge-label span:first-child { color: var(--text); }
+.gauge-label span:last-child { color: var(--hint); font-weight: 600; }
+.gauge-bar {
+  height: 4px; border-radius: 2px; background: rgba(255,255,255,.08);
+  overflow: hidden;
+}
+.gauge-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+.gauge-fill.low { background: #22c55e; }
+.gauge-fill.mid { background: #f59e0b; }
+.gauge-fill.high { background: #ef4444; }
+
+.item { padding: 9px 14px; border-top: 1px solid rgba(255,255,255,.04); display: flex; justify-content: space-between; align-items: center; }
+.item-label { font-size: 12px; font-weight: 500; }
+.item-value { font-size: 12px; font-weight: 600; text-align: right; }
+.item-value.positive { color: #22c55e; }
+.item-value.negative { color: #ef4444; }
+.item-value.muted { color: var(--hint); }
+.item-value.accent { color: var(--accent); }
+
+/* Quick actions grid */
+.quick-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+  padding: 6px 12px 10px;
+}
+.qbtn {
+  padding: 7px 10px; border-radius: 10px; font-size: 11px; font-weight: 700;
+  border: none; cursor: pointer; font-family: inherit;
+  background: rgba(79,70,229,.15); color: var(--accent);
+  transition: background .15s;
+}
+.qbtn:active { opacity: .7; }
+.qbtn.reload { background: rgba(34,197,94,.12); color: #22c55e; }
+.qbtn.danger { background: rgba(239,68,68,.12); color: #ef4444; }
+
+/* Process list */
+.process-list { padding: 0 14px; }
+.process-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+  font-size: 11px;
+}
+.process-row:last-child { border-bottom: none; }
+.proc-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.proc-dot.running { background: #22c55e; }
+.proc-dot.stopped { background: #ef4444; }
+.proc-name { flex: 1; color: var(--text); font-weight: 600; }
+.proc-meta { color: var(--hint); font-size: 10px; }
+
+/* ─── CRON PANEL ────────────────────────────────────────────────────────── */
+.cron-empty { padding: 40px 20px; text-align: center; color: var(--hint); font-size: 12px; }
+
+.cron-timeline {
+  padding: 12px 14px 0;
+}
+.tl-header { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--hint); margin-bottom: 10px; }
+.tl-event {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 6px 0; position: relative;
+}
+.tl-time {
+  font-size: 10px; color: var(--hint); width: 48px; flex-shrink: 0;
+  padding-top: 2px; font-weight: 600;
+}
+.tl-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+  border: 2px solid var(--bg);
+}
+.tl-dot.running { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+.tl-dot.pending { background: var(--hint); }
+.tl-dot.error { background: #ef4444; }
+.tl-info { flex: 1; }
+.tl-name { font-size: 12px; font-weight: 600; }
+.tl-meta { font-size: 10px; color: var(--hint); margin-top: 1px; }
+.tl-line {
+  position: absolute; left: 53px; top: 18px; bottom: -6px;
+  width: 1px; background: rgba(255,255,255,.06);
+}
+.tl-event:last-child .tl-line { display: none; }
+
+.cron-card {
+  background: var(--section-bg); border-radius: 14px;
+  padding: 12px 14px; margin: 0 14px 8px;
+}
+.cron-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+.cron-schedule { font-size: 10px; color: var(--hint); font-family: inherit; }
+.cron-meta { font-size: 10px; color: var(--hint); margin-top: 3px; }
+.cron-actions { display: flex; gap: 5px; margin-top: 8px; }
+.cron-btn {
+  padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 700;
+  border: none; cursor: pointer; font-family: inherit;
+}
+.cron-btn.pause { background: rgba(245,158,11,.15); color: #f59e0b; }
+.cron-btn.resume { background: rgba(34,197,94,.15); color: #22c55e; }
+.cron-btn.run { background: rgba(79,70,229,.15); color: var(--accent); }
+.cron-btn.delete { background: rgba(239,68,68,.12); color: #ef4444; }
+.cron-btn.edit { background: rgba(139,92,246,.12); color: #8b5cf6; }
+.cron-btn:active { opacity: .7; }
+
+/* Cron FAB */
+.cron-fab {
+  position: absolute; bottom: 16px; right: 16px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--btn); color: var(--btn-text);
+  border: none; font-size: 22px; cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,.3);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5;
+}
+.cron-fab:active { transform: scale(.92); }
+
+/* Cron Modal */
+.cron-modal-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0,0,0,.5);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+}
+.cron-modal-overlay.open { opacity: 1; pointer-events: all; }
+.cron-modal {
+  width: 100%; max-width: 480px;
+  background: var(--sec-bg);
+  border-radius: 16px 16px 0 0;
+  max-height: 85vh; overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  padding-bottom: var(--safe-bottom);
+}
+.cron-modal-overlay.open .cron-modal { transform: translateY(0); }
+.cron-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 700;
+}
+.cron-modal-header button {
+  background: none; border: none; color: var(--hint);
+  font-size: 16px; cursor: pointer; padding: 4px;
+}
+.cron-modal-body { padding: 14px 16px 20px; }
+.cron-field { margin-bottom: 14px; }
+.cron-field label {
+  display: block; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px;
+  color: var(--hint); margin-bottom: 5px;
+}
+.cron-field input, .cron-field textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 12px;
+  color: var(--text); font-family: inherit; font-size: 13px; outline: none;
+}
+.cron-field input:focus, .cron-field textarea:focus { border-color: var(--btn); }
+.cron-field textarea { resize: vertical; min-height: 80px; }
+.cron-chips {
+  display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap;
+}
+.cron-chip {
+  padding: 4px 10px; border-radius: 8px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--border);
+  color: var(--text); font-size: 10px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.cron-chip:active { background: var(--btn); color: var(--btn-text); }
+.cron-chip.active { background: var(--btn); color: var(--btn-text); border-color: var(--btn); }
+.cron-submit-btn {
+  width: 100%; padding: 11px; border-radius: 12px;
+  background: var(--btn); color: var(--btn-text);
+  border: none; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; margin-top: 4px;
+}
+.cron-submit-btn:active { opacity: .8; }
+.cron-delete-confirm {
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(239,68,68,.08); border-radius: 10px;
+  padding: 10px 12px; margin-top: 8px;
+}
+.cron-delete-confirm span { flex: 1; font-size: 12px; color: var(--destructive); }
+.cron-delete-confirm button {
+  padding: 4px 12px; border-radius: 8px; border: none;
+  font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.cron-delete-confirm .confirm-del { background: #ef4444; color: #fff; }
+.cron-delete-confirm .cancel-del { background: rgba(255,255,255,.08); color: var(--text); }
+
+/* ─── TOAST ─────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; top: calc(var(--safe-top) + 14px); left: 50%; transform: translateX(-50%);
+  background: var(--destructive); color: #fff; padding: 8px 16px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; z-index: 100; opacity: 0;
+  transition: opacity .2s; pointer-events: none; white-space: nowrap;
+}
+.toast.visible { opacity: 1; }
+.toast.success { background: #22c55e; }
+
+/* Retry bar */
+.retry-bar {
+  display: none; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.3);
+  border-radius: 8px; margin: 6px 12px 0; padding: 6px 12px;
+  font-size: 11px; color: #f59e0b; align-items: center; gap: 8px;
+}
+.retry-bar.visible { display: flex; }
+.retry-bar button {
+  background: rgba(245,158,11,.2); border: 1px solid rgba(245,158,11,.4);
+  border-radius: 6px; padding: 3px 10px; color: #f59e0b; font-size: 10px;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+}
+
+/* ─── MSG MENU POPUP ───────────────────────────────────────────────────── */
+.msg-popup {
+  position: fixed; background: var(--sec-bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 4px; z-index: 60;
+  min-width: 140px; display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.msg-popup.open { display: block; }
+.msg-popup-item {
+  padding: 8px 12px; font-size: 12px; cursor: pointer;
+  border-radius: 8px; display: flex; align-items: center; gap: 8px;
+  color: var(--text);
+}
+.msg-popup-item:active { background: rgba(255,255,255,.07); }
+.msg-popup-item.danger { color: #ef4444; }
+.msg-popup-item .icon { font-size: 14px; width: 18px; text-align: center; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+/* ─── AGENTS ────────────────────────────────────────────────────────────── */
+.agent-card {
+  background: var(--section-bg); border-radius: 12px;
+  padding: 12px 14px; margin: 0 12px 10px;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: border-color .15s;
+}
+.agent-card:active { border-color: var(--btn); }
+.agent-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.agent-card-name { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.agent-status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.agent-status-dot.running { background: #22c55e; box-shadow: 0 0 6px #22c55e55; }
+.agent-status-dot.idle { background: #eab308; }
+.agent-status-dot.dead, .agent-status-dot.done { background: var(--hint); }
+.agent-status-dot.spawning { background: #3b82f6; animation: pulse-dot 1s infinite; }
+@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+.agent-card-meta { font-size: 10px; color: var(--hint); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.agent-card-meta .tag { background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 4px; font-size: 9px; }
+.agent-card-prompt { font-size: 10px; color: var(--hint); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.agent-kill-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(255,255,255,.06); border: none;
+  color: var(--destructive); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.agent-kill-btn:active { background: var(--destructive); color: #fff; }
+
+.agents-output-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: var(--hdr-bg);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.agents-back-btn { background: none; border: none; color: var(--accent); font-size: 13px; font-family: inherit; cursor: pointer; padding: 4px 8px; }
+.agents-output-title { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+.agents-terminal {
+  flex: 1; overflow-y: auto; padding: 10px 12px;
+  font-family: 'SF Mono','Fira Code','Cascadia Code','Menlo',monospace;
+  font-size: 11px; line-height: 1.5; color: var(--text);
+  white-space: pre-wrap; word-break: break-all;
+  -webkit-overflow-scrolling: touch; background: var(--bg);
+}
+.agents-input-bar {
+  display: flex; gap: 8px;
+  padding: 8px 12px calc(var(--safe-bottom) + 8px);
+  background: var(--sec-bg); border-top: 1px solid var(--border);
+  align-items: flex-end;
+}
+.agents-empty { text-align: center; padding: 40px 20px; color: var(--hint); font-size: 12px; }
+.agents-empty-icon { font-size: 36px; margin-bottom: 10px; opacity: .4; }
+.agent-kill-confirm {
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(239,68,68,.08); border-radius: 10px;
+  padding: 6px 10px; margin-top: 6px; font-size: 11px;
+}
+.agent-kill-confirm button {
+  padding: 3px 10px; border-radius: 6px; border: none;
+  font-size: 11px; cursor: pointer; font-family: inherit;
+}
+.agent-kill-confirm .kbtn { background: var(--destructive); color: #fff; }
+.agent-kill-confirm .cbtn { background: rgba(255,255,255,.08); color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- TOKEN GATE (browser-only, hidden for Telegram) -->
+<div id="token-gate" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg,#0c0c10);flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center;">
+  <div style="font-size:32px;margin-bottom:8px">&#128274;</div>
+  <div style="font-size:16px;font-weight:600;margin-bottom:4px">Access Required</div>
+  <div style="font-size:13px;color:var(--hint);margin-bottom:24px;line-height:1.5">
+    Enter your Hermes API token to continue.<br>Find it in <code>~/.hermes/.env</code> as <code>API_SERVER_KEY</code>.
+  </div>
+  <input type="password" id="token-input" placeholder="API_SERVER_KEY" autocomplete="off"
+    style="width:100%;max-width:340px;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-family:monospace;outline:none;margin-bottom:12px;">
+  <button onclick="submitToken()" id="token-submit"
+    style="width:100%;max-width:340px;padding:12px;border-radius:10px;background:#2e7d32;color:#fff;font-size:14px;font-weight:600;border:none;cursor:pointer;">
+    Connect
+  </button>
+  <div id="token-error" style="color:#ef5350;font-size:12px;margin-top:12px;display:none"></div>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- MENU DRAWER -->
+<div class="menu-drawer" id="menu-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title">Command Menu</div>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <div class="drawer-search">
+    <input type="text" id="menu-search" placeholder="Filter commands..." oninput="filterMenu(this.value)">
+  </div>
+  <div class="drawer-scroll" id="drawer-scroll">
+    <!-- Populated by JS -->
+    <div style="padding:20px;color:var(--hint);text-align:center;font-size:12px" id="menu-loading">Loading...</div>
+  </div>
+  <div class="drawer-footer">Hermes v3 &mdash; tap a command to run</div>
+</div>
+
+<!-- HEADER BAR -->
+<div class="header-bar">
+  <button class="menu-btn" id="menu-btn" onclick="openDrawer()" aria-label="Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <div class="header-title">Hermes</div>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:5px">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span class="conn-label" id="conn-label">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- TUI-STYLE INFO BAR -->
+<div class="header-info-bar" id="info-bar">
+  <span class="ctx-model" id="ctx-model">—</span>
+  <span class="ctx-sep">│</span>
+  <span class="ctx-label" id="ctx-tokens">ctx —</span>
+  <span class="ctx-bar-wrap">
+    <span class="ctx-bar"><span class="ctx-fill good" id="ctx-fill" style="width:0%"></span></span>
+    <span class="ctx-pct good" id="ctx-pct">0%</span>
+  </span>
+  <span class="ctx-duration" id="ctx-duration">0:00</span>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <div class="tab active" data-panel="terminal" onclick="switchTab('terminal')">
+    <span class="tab-icon">&gt;_</span>Terminal
+  </div>
+  <div class="tab" data-panel="status" onclick="switchTab('status')">
+    <span class="tab-icon">&#9679;</span>Status
+  </div>
+  <div class="tab" data-panel="cron" onclick="switchTab('cron')">
+    <span class="tab-icon">&#9201;</span>Cron
+  </div>
+  <div class="tab" data-panel="agents" onclick="switchTab('agents')">
+    <span class="tab-icon">&#9889;</span>Agents
+  </div>
+</div>
+
+<!-- TERMINAL -->
+<div id="terminal-panel" class="panel active" style="position:relative">
+  <div class="chat-wrap">
+    <div class="chat-messages" id="chat-messages"></div>
+    <button class="scroll-btn" id="scroll-btn" onclick="scrollToBottom(true)">&#8595;</button>
+  </div>
+  <div class="retry-bar" id="retry-bar">
+    <span id="retry-msg">Request failed</span>
+    <button onclick="retryLast()">Retry</button>
+  </div>
+  <div class="cmd-suggest" id="cmd-suggest"></div>
+  <div class="chat-input-bar">
+    <button class="attach-btn" id="attach-btn" onclick="triggerAttach()" title="Attach file">&#128206;</button>
+    <input type="file" id="file-input" class="hidden-input" accept="image/*,.pdf,.csv,.txt,.json" onchange="handleFileAttach(this)">
+    <div class="attach-preview" id="attach-preview" style="display:none">
+      <span id="attach-name" class="attach-name"></span>
+      <button class="attach-remove" onclick="removeAttachment()" title="Remove">&#10005;</button>
+    </div>
+    <textarea class="chat-input" id="chat-input" placeholder="Message or /command..." rows="1"
+      oninput="onInputChange(this)" onkeydown="handleKey(event)"></textarea>
+    <button class="send-btn" id="send-btn" onclick="sendMessage()">&#9654;</button>
+  </div>
+</div>
+
+<!-- STATUS -->
+<div id="status-panel" class="panel">
+  <div class="status-bar" id="status-bar"></div>
+  <div class="panel-scroll" id="status-content"></div>
+</div>
+
+<!-- CRON -->
+<div id="cron-panel" class="panel">
+  <div class="panel-scroll" id="cron-content" style="padding-top:12px"></div>
+  <button class="cron-fab" onclick="openCronModal()" title="New job">+</button>
+</div>
+
+<!-- AGENTS -->
+<div id="agents-panel" class="panel">
+  <div id="agents-list-view" style="display:flex;flex-direction:column;height:100%">
+    <div class="panel-scroll" id="agents-content" style="padding-top:12px"></div>
+    <button class="cron-fab" onclick="openSpawnModal()" title="Spawn agent">+</button>
+  </div>
+  <div id="agents-output-view" style="display:none;flex-direction:column;height:100%">
+    <div class="agents-output-header">
+      <button class="agents-back-btn" onclick="closeAgentOutput()">&#8592; Agents</button>
+      <span id="agents-output-name" class="agents-output-title"></span>
+      <span id="agents-output-status" class="agent-status-dot"></span>
+    </div>
+    <div class="agents-terminal" id="agents-terminal"></div>
+    <div class="agents-input-bar">
+      <textarea class="chat-input" id="agents-input" placeholder="Send to agent..." rows="1"
+        oninput="onInputChange(this)" onkeydown="handleAgentKey(event)"></textarea>
+      <button class="send-btn" id="agent-send-btn" onclick="sendAgentMessage()">&#9654;</button>
+    </div>
+  </div>
+</div>
+
+<!-- CRON MODAL -->
+<div class="cron-modal-overlay" id="cron-modal-overlay" onclick="closeCronModal(event)">
+  <div class="cron-modal" id="cron-modal" onclick="event.stopPropagation()">
+    <div class="cron-modal-header">
+      <span id="cron-modal-title">New Cron Job</span>
+      <button onclick="closeCronModal()">&#10005;</button>
+    </div>
+    <div class="cron-modal-body">
+      <div class="cron-field">
+        <label>Name</label>
+        <input id="cron-field-name" placeholder="Daily summary" maxlength="200">
+      </div>
+      <div class="cron-field">
+        <label>Schedule</label>
+        <input id="cron-field-schedule" placeholder="0 9 * * *">
+        <div class="cron-chips">
+          <button class="cron-chip" onclick="setSchedule('30m')">30m</button>
+          <button class="cron-chip" onclick="setSchedule('1h')">1h</button>
+          <button class="cron-chip" onclick="setSchedule('every 2h')">2h</button>
+          <button class="cron-chip" onclick="setSchedule('0 9 * * *')">9am daily</button>
+          <button class="cron-chip" onclick="setSchedule('0 0 * * 0')">Weekly</button>
+        </div>
+      </div>
+      <div class="cron-field">
+        <label>Prompt</label>
+        <textarea id="cron-field-prompt" rows="4" placeholder="Task instruction (self-contained — no chat context)" maxlength="5000"></textarea>
+      </div>
+      <div class="cron-field">
+        <label>Repeat <span style="font-weight:400;text-transform:none">(empty = forever)</span></label>
+        <input id="cron-field-repeat" type="number" min="1" placeholder="∞">
+      </div>
+      <button class="cron-submit-btn" id="cron-submit-btn" onclick="submitCronJob()">Create Job</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPAWN MODAL -->
+<div class="cron-modal-overlay" id="spawn-modal-overlay" onclick="closeSpawnModal(event)">
+  <div class="cron-modal" id="spawn-modal" onclick="event.stopPropagation()">
+    <div class="cron-modal-header">
+      <span class="cron-modal-title" id="spawn-modal-title">Spawn Agent</span>
+      <button class="cron-modal-close" onclick="closeSpawnModal()">&#10005;</button>
+    </div>
+    <div class="cron-modal-body">
+      <div class="cron-field">
+        <label>Name <span style="font-weight:400;text-transform:none">(optional)</span></label>
+        <input id="spawn-name" placeholder="auto-generated if empty">
+      </div>
+      <div class="cron-field">
+        <label>Task</label>
+        <textarea id="spawn-prompt" rows="3" placeholder="Build a REST API for user management"></textarea>
+      </div>
+      <div class="cron-field">
+        <label>Mode</label>
+        <div class="cron-chips" id="spawn-mode-chips">
+          <button class="cron-chip active" onclick="setSpawnMode('interactive')">Interactive</button>
+          <button class="cron-chip" onclick="setSpawnMode('oneshot')">One-shot</button>
+        </div>
+      </div>
+      <div class="cron-field">
+        <label>Options</label>
+        <div class="cron-chips">
+          <button class="cron-chip" id="spawn-worktree-chip" onclick="toggleSpawnWorktree()">Worktree (-w)</button>
+        </div>
+      </div>
+      <button class="cron-submit-btn" id="spawn-submit-btn" onclick="submitSpawn()">&#9889; Spawn Agent</button>
+      <div id="spawn-error" class="cron-error" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MSG POPUP -->
+<div class="msg-popup" id="msg-popup">
+  <div class="msg-popup-item" onclick="copyMsg()"><span class="icon">&#128203;</span>Copy</div>
+  <div class="msg-popup-item" onclick="retryMsg()"><span class="icon">&#8635;</span>Retry</div>
+  <div class="msg-popup-item danger" onclick="deleteMsg()"><span class="icon">&#128465;</span>Delete</div>
+</div>
+
+<script>
+const WebApp = window.Telegram?.WebApp;
+const API = window.location.origin;
+const CS = WebApp?.CloudStorage;
+
+if (WebApp) { WebApp.ready(); WebApp.expand(); }
+
+// ─── KEYBOARD / VIEWPORT HANDLING ──────────────────────────────────────────
+// Smoothly adapt layout when virtual keyboard opens/closes
+(function setupViewportHandler() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const chatWrap = document.querySelector('.chat-wrap');
+  if (!chatWrap) return;
+  let _kbRaf = null;
+  function onViewportChange() {
+    if (_kbRaf) return;
+    _kbRaf = requestAnimationFrame(() => {
+      _kbRaf = null;
+      const offset = vv.offsetTop + vv.height < window.innerHeight
+        ? 0
+        : window.innerHeight - vv.offsetTop - vv.height;
+      chatWrap.style.height = vv.height + 'px';
+      // Instant scroll during keyboard transitions (avoids jank)
+      if (streaming) {
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+    });
+  }
+  vv.addEventListener('resize', onViewportChange);
+  vv.addEventListener('scroll', onViewportChange);
+})();
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let sessionId = null;
+let streaming = false;
+let activeTab = 'terminal';
+let lastRequest = null;
+let retryCount = 0;
+let connState = 'checking';
+let userId = null;
+let apiToken = null;      // Bearer token for non-Telegram (browser) access
+let _spawnMode = 'interactive';
+let _spawnWorktree = false;
+let _activeAgent = null;     // name of agent being viewed in output panel
+let _agentPollTimer = null;
+let isTelegram = false;   // true when running inside Telegram client
+let allCommands = [];       // full registry from /api/commands
+let attachedImage = null;  // {data_url, name}
+let pendingMsgMenu = null;  // msg element pending menu action
+let streamAbort = null;     // AbortController for cancelling active stream
+let _streamDiv = null;      // currently streaming message element
+let _modelInfo = null;       // {model, model_short, provider, context_length}
+let _sessionUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+let _sessionStart = Date.now();
+let _durationTimer = null;
+
+// ─── DRAWER ────────────────────────────────────────────────────────────────
+function openDrawer() {
+  document.getElementById('menu-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('menu-search').focus();
+  WebApp?.HapticFeedback?.impactOccurred('light');
+  if (!allCommands.length) loadCommands();
+}
+
+function closeDrawer() {
+  document.getElementById('menu-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+  WebApp?.HapticFeedback?.impactOccurred('light');
+}
+
+async function loadCommands() {
+  try {
+    const data = await api('/api/commands');
+    allCommands = data.commands || [];
+    renderDrawer(allCommands, '');
+  } catch(e) {
+    document.getElementById('menu-loading').textContent = 'Failed to load commands';
+  }
+}
+
+function filterMenu(q) {
+  renderDrawer(allCommands, q.toLowerCase());
+}
+
+function renderDrawer(commands, query) {
+  const el = document.getElementById('drawer-scroll');
+  if (!commands.length) {
+    el.innerHTML = '<div style="padding:20px;color:var(--hint);text-align:center;font-size:12px">No commands found</div>';
+    return;
+  }
+
+  // Filter
+  const filtered = commands.filter(c => {
+    if (!query) return true;
+    return c.name.includes(query) ||
+      c.description.toLowerCase().includes(query) ||
+      (c.aliases || []).some(a => a.includes(query));
+  });
+
+  // Group by category
+  const cats = {};
+  filtered.forEach(c => {
+    const cat = c.category || 'Other';
+    if (!cats[cat]) cats[cat] = [];
+    cats[cat].push(c);
+  });
+
+  const iconMap = {
+    'Session': '&#9636;', 'Configuration': '&#9881;', 'Tools': '&#9883;',
+    'Skills': '&#9733;', 'Model': '&#128200;', 'Cron': '&#9201;',
+    'Memory': '&#128190;', 'System': '&#128187;', 'Trading': '&#128200;',
+    'Default': '&#9654;',
+  };
+
+  let html = '';
+  Object.keys(cats).sort().forEach(cat => {
+    html += `<div class="cmd-category">${cat}</div>`;
+    cats[cat].forEach(cmd => {
+      const needsArgs = cmd.args_hint;
+      const isCliOnly = cmd.cli_only;
+      const icon = iconMap[cat] || iconMap['Default'];
+      html += `<div class="cmd-item${isCliOnly ? ' cmd-item-cli' : ''}"
+        onclick="runCmdFromDrawer('${cmd.name}', ${!!needsArgs})">
+        <div class="cmd-icon">${icon}</div>
+        <div class="cmd-info">
+          <div class="cmd-name">/${cmd.name}</div>
+          <div class="cmd-desc">${esc(cmd.description)}</div>
+        </div>
+        ${needsArgs ? `<div class="cmd-args">${esc(cmd.args_hint)}</div>` : ''}
+        ${isCliOnly ? '<div class="cmd-badge">CLI</div>' : ''}
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function runCmdFromDrawer(name, needsArgs) {
+  closeDrawer();
+  if (needsArgs) {
+    // Switch to terminal and prefill the command
+    switchTab('terminal');
+    const input = document.getElementById('chat-input');
+    input.value = '/' + name + ' ';
+    input.focus();
+  } else {
+    // Execute immediately
+    switchTab('terminal');
+    const input = document.getElementById('chat-input');
+    input.value = '/' + name + ' ';
+    sendMessage();
+  }
+}
+
+// ─── TOKEN GATE (browser-only) ───────────────────────────────────────────────
+function showTokenGate() {
+  document.getElementById('token-gate').style.display = 'flex';
+}
+function hideTokenGate() {
+  document.getElementById('token-gate').style.display = 'none';
+}
+async function submitToken() {
+  const input = document.getElementById('token-input');
+  const btn = document.getElementById('token-submit');
+  const err = document.getElementById('token-error');
+  const token = input.value.trim();
+  if (!token) { err.textContent = 'Please enter your API token'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+  err.style.display = 'none';
+  // Test the token by hitting /api/debug-auth (which does NOT enforce auth)
+  // to confirm the gateway is reachable, then verify the token via /api/commands
+  try {
+    // First verify gateway is reachable
+    const health = await fetchWithTimeout(API + '/health', { timeout: 5000 });
+    if (!health.ok) throw new Error('Gateway unreachable');
+
+    // Then verify the token by calling /api/commands with ONLY Bearer auth
+    // (no Telegram initData — this forces true Bearer token validation)
+    const r = await fetchWithTimeout(API + '/api/commands', {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'X-Telegram-Init-Data': '',  // empty = no Telegram HMAC
+      },
+      timeout: 8000,
+    });
+    if (r.ok) {
+      apiToken = token;
+      // Store in CloudStorage (Telegram-native) and localStorage (browser fallback)
+      if (CS) { try { await CS.setItem('hermes_api_token', token); } catch (_) {} }
+      try { sessionStorage.setItem('hermes_api_token', token); } catch (_) {}
+      hideTokenGate();
+      initAfterAuth();
+    } else {
+      const ct = r.headers.get('content-type') || '';
+      let msg = 'Invalid token (HTTP ' + r.status + ')';
+      if (ct.includes('application/json')) {
+        try { const j = await r.json(); if (j?.error?.message) msg = j.error.message; } catch (_) {}
+      }
+      err.textContent = msg;
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Connect';
+    }
+  } catch(e) {
+    err.textContent = 'Connection failed: ' + e.message;
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Connect';
+  }
+}
+function initAfterAuth() {
+  // Called after token is accepted — resume normal init flow
+  loadModelInfo();
+  startDurationTimer();
+  loadCommands();
+  addMsg('system', 'Hermes Terminal — type /help or tap menu for commands.');
+  input.focus();
+  setInterval(async () => {
+    if (activeTab === 'status') loadStatus();
+    if (activeTab === 'cron') loadCron();
+    await checkConn();
+  }, 30000);
+}
+
+// ─── CONNECTION ─────────────────────────────────────────────────────────────
+function setConn(state) {
+  connState = state;
+  const dot = document.getElementById('conn-dot');
+  const lbl = document.getElementById('conn-label');
+  dot.className = 'conn-dot ' + (state === 'online' ? 'online' : state === 'offline' ? 'offline' : '');
+  lbl.textContent = state === 'online' ? 'Online' : state === 'offline' ? 'Offline' : '...';
+}
+
+async function checkConn() {
+  try {
+    const r = await fetchWithTimeout(API + '/health', { timeout: 4000 });
+    if (r.ok) { setConn('online'); return true; }
+  } catch(_) {}
+  setConn('offline'); return false;
+}
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+function headers(extra) {
+  const h = { 'Content-Type': 'application/json' };
+  if (isTelegram && WebApp?.initData) h['X-Telegram-Init-Data'] = WebApp.initData;
+  if (sessionId) h['X-Hermes-Session-Id'] = sessionId;
+  if (apiToken) h['Authorization'] = 'Bearer ' + apiToken;
+  return { ...h, ...(extra||{}) };
+}
+
+async function fetchWithTimeout(url, { method='GET', headers={}, body=null, timeout=15000 } = {}) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const r = await fetch(url, { method, headers, body, signal: ctrl.signal });
+    clearTimeout(id);
+    return r;
+  } catch(e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
+
+async function api(path, opts = {}) {
+  const r = await fetchWithTimeout(API + path, {
+    method: opts.method || 'GET',
+    headers: headers(opts.headers || {}),
+    body: opts.body ? JSON.stringify(opts.body) : null,
+  });
+  if (!r.ok) {
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(j?.error?.message || j?.error || `API ${r.status}`);
+    }
+    throw new Error(`API ${r.status}: ${r.statusText}`);
+  }
+  return r.json();
+}
+
+// Markdown-lite renderer
+function renderMsg(text) {
+  if (!text) return esc(text);
+  text = esc(text);
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code>${code.trim()}</code></pre>`);
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  text = text.replace(/(https?:\/\/[^\s<"']+)/g, (_, url) =>
+    `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`);
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
+// ─── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(t) {
+  if (streaming && t !== 'terminal') return;
+  activeTab = t;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.panel === t));
+  document.querySelectorAll('.panel').forEach(x => x.classList.toggle('active', x.id === t + '-panel'));
+  if (t === 'status') loadStatus();
+  if (t === 'cron') loadCron();
+  if (t === 'agents') loadAgents();
+  if (t !== 'agents') { clearInterval(_agentPollTimer); _agentPollTimer = null; _activeAgent = null; }
+  WebApp?.HapticFeedback?.impactOccurred('light');
+  closeMsgPopup();
+}
+
+// ─── CHAT ───────────────────────────────────────────────────────────────────
+const msgs = document.getElementById('chat-messages');
+const input = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+const suggest = document.getElementById('cmd-suggest');
+
+function now() {
+  const d = new Date();
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function addMsg(role, text, cls, opts = {}) {
+  const d = document.createElement('div');
+  d.className = `msg msg-${role}${cls ? ' ' + cls : ''}`;
+  const time = opts.time || now();
+  const safeImg = opts.img && typeof opts.img === 'string' && opts.img.startsWith('data:image/') ? `<img class="msg-img" src="${esc(opts.img)}" alt="attachment">` : '';
+  if (role === 'agent' || role === 'command') {
+    d.innerHTML = `<div class="msg-bubble">${safeImg}${renderMsg(text)}</div>
+      <div class="msg-time">${time}</div>
+      <button class="msg-menu" onclick="showMsgPopup(event, this)" aria-label="Message options">&#8226;&#8226;&#8226;</button>`;
+  } else if (role === 'system') {
+    d.innerHTML = `<div class="msg-bubble">${esc(text)}</div>`;
+  } else {
+    d.innerHTML = `<div class="msg-bubble">${safeImg}${esc(text)}</div>
+      <div class="msg-time">${time}</div>
+      <button class="msg-menu" onclick="showMsgPopup(event, this)" aria-label="Message options">&#8226;&#8226;&#8226;</button>`;
+  }
+  msgs.appendChild(d);
+  if (opts.scroll !== false) scrollToBottom();
+  return d;
+}
+
+function addToolMsg(name, icon, preview, status) {
+  const d = document.createElement('div');
+  d.className = 'msg msg-agent';
+  d.innerHTML = `<div class="msg-tool">
+    <div class="tool-header">
+      <span class="tool-icon">${icon}</span>
+      <span class="tool-name">${esc(name)}</span>
+      <span class="tool-status">${esc(status)}</span>
+    </div>
+    ${preview ? `<div class="tool-preview">${esc(preview)}</div>` : ''}
+  </div>`;
+  msgs.appendChild(d);
+  scrollToBottom();
+  return d;
+}
+
+// Thinking animation
+const catFrames = [
+  '  /\\_/\\\n > o.o <\n > ~w~ <',
+  '  /\\_/\\\n > -.o <\n   |  |',
+  '  /\\_/\\\n > o.O <\n > ~m~ <',
+  '  /\\_/\\\n > O.o <\n   |  |',
+  '  /\\_/\\\n > -.- <\n > ~z~ <',
+  '  /\\_/\\\n > o.O <\n > ~w~ <',
+];
+const catPhrases = [
+  'thinking...', 'hmm let me check...', 'poking the terminal...',
+  'consulting /dev/urandom...', 'deeper thought required...',
+  'crunching bytes...', 'hacking the gibson...', 'one sec, almost there...',
+  'asking the oracle...', 'divining the answer...',
+];
+let _thinkInterval = null, _thinkFrame = 0;
+
+function addTyping() {
+  const d = document.createElement('div');
+  d.className = 'msg msg-agent';
+  d.id = 'typing';
+  d.innerHTML = `<div class="thinking-box">
+    <div class="thinking-cat"><div class="thinking-frame" id="think-ascii">${catFrames[0]}</div></div>
+    <div class="thinking-subtext"><span class="thinking-spinner"></span><span id="think-label">${catPhrases[0]}</span></div>
+  </div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+  _thinkFrame = 0;
+  _thinkInterval = setInterval(() => {
+    _thinkFrame++;
+    const ascii = document.getElementById('think-ascii');
+    const label = document.getElementById('think-label');
+    if (ascii) ascii.textContent = catFrames[_thinkFrame % catFrames.length];
+    if (label && _thinkFrame % 3 === 0) label.textContent = catPhrases[Math.floor(Math.random() * catPhrases.length)];
+  }, 600);
+}
+
+function rmTyping() {
+  if (_thinkInterval) { clearInterval(_thinkInterval); _thinkInterval = null; }
+  const e = document.getElementById('typing');
+  if (e) e.remove();
+}
+
+function scrollToBottom(force) {
+  const el = msgs;
+  if (force || el.scrollHeight - el.scrollTop - el.clientHeight < 120) {
+    // Use RAF for smooth GPU-composited scroll (no CSS scroll-behavior jank)
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: force ? 'instant' : 'smooth' });
+    });
+  }
+}
+
+msgs.addEventListener('scroll', () => {
+  const scrolled = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight;
+  document.getElementById('scroll-btn').classList.toggle('visible', scrolled > 80);
+});
+
+function resize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ─── AUTOCOMPLETE ──────────────────────────────────────────────────────────
+function onInputChange(el) {
+  resize(el);
+  const v = el.value.trim();
+  if (v.startsWith('/') && v.indexOf(' ') === -1) {
+    const q = v.slice(1).toLowerCase();
+    const matches = (window.cmdList || []).filter(c => c.name.startsWith(q)).slice(0, 6);
+    if (matches.length && q.length > 0) {
+      suggest.innerHTML = matches.map(c =>
+        `<div class="cmd-suggest-item" onclick="pickCmd('${esc(c.name)}')"><span class="cmd-name">/${esc(c.name)}</span><span class="cmd-desc">${esc(c.desc)}</span></div>`
+      ).join('');
+      suggest.classList.add('visible');
+      return;
+    }
+  }
+  suggest.classList.remove('visible');
+}
+
+function pickCmd(name) {
+  input.value = '/' + name + ' ';
+  input.focus();
+  suggest.classList.remove('visible');
+  resize(input);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const first = suggest.querySelector('.cmd-suggest-item');
+    if (first) first.click();
+  }
+  if (e.key === 'Escape') suggest.classList.remove('visible');
+}
+
+// ─── MSG POPUP ─────────────────────────────────────────────────────────────
+function showMsgPopup(e, btn) {
+  e.stopPropagation();
+  closeMsgPopup();
+  const msg = btn.closest('.msg');
+  pendingMsgMenu = { el: msg, text: msg.querySelector('.msg-bubble')?.textContent || '' };
+  const popup = document.getElementById('msg-popup');
+  const rect = btn.getBoundingClientRect();
+  popup.style.top = (rect.bottom + 4) + 'px';
+  popup.style.right = (window.innerWidth - rect.right - 8) + 'px';
+  popup.style.left = 'auto';
+  popup.classList.add('open');
+  WebApp?.HapticFeedback?.impactOccurred('light');
+}
+
+function closeMsgPopup() {
+  document.getElementById('msg-popup').classList.remove('open');
+  pendingMsgMenu = null;
+}
+
+function copyMsg() {
+  if (pendingMsgMenu?.text) {
+    navigator.clipboard?.writeText(pendingMsgMenu.text).catch(() => {});
+    toast('Copied!', 1500);
+  }
+  closeMsgPopup();
+}
+
+function retryMsg() {
+  if (pendingMsgMenu) {
+    const userMsgs = msgs.querySelectorAll('.msg-user');
+    if (userMsgs.length) userMsgs[userMsgs.length - 1].remove();
+    // Remove the agent response that follows
+    const agentReply = pendingMsgMenu.el.nextElementSibling;
+    if (agentReply?.classList.contains('msg-agent')) agentReply.remove();
+    pendingMsgMenu.el.remove();
+    pendingMsgMenu = null;
+  }
+  closeMsgPopup();
+  retryLast();
+}
+
+function deleteMsg() {
+  if (pendingMsgMenu) {
+    // Also delete following agent reply if any
+    const next = pendingMsgMenu.el.nextElementSibling;
+    if (next?.classList.contains('msg-agent')) next.remove();
+    pendingMsgMenu.el.remove();
+    pendingMsgMenu = null;
+  }
+  closeMsgPopup();
+  toast('Message deleted', 1500);
+}
+
+document.addEventListener('click', closeMsgPopup);
+
+// ─── TOAST & RETRY ─────────────────────────────────────────────────────────
+let _toastTimer = null;
+function toast(msg, duration = 3000, success = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.toggle('success', success);
+  el.classList.add('visible');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('visible'), duration);
+}
+
+function showRetry(msg) {
+  document.getElementById('retry-msg').textContent = msg;
+  document.getElementById('retry-bar').classList.add('visible');
+  retryCount++;
+}
+
+function hideRetry() {
+  document.getElementById('retry-bar').classList.remove('visible');
+  retryCount = 0;
+}
+
+// ─── FILE ATTACHMENT ───────────────────────────────────────────────────────
+function triggerAttach() {
+  document.getElementById('file-input').click();
+  WebApp?.HapticFeedback?.impactOccurred('light');
+}
+
+function handleFileAttach(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const supported = ['image/', 'application/pdf', 'text/', 'application/json', 'text/csv'];
+  if (!supported.some(t => file.type.startsWith(t))) {
+    toast('Unsupported file type. Use images, PDFs, or text files.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    attachedImage = { data_url: e.target.result, name: file.name };
+    updateAttachPreview();
+    toast('File attached — ' + file.name, 2000, true);
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateAttachPreview() {
+  const el = document.getElementById('attach-preview');
+  const nameEl = document.getElementById('attach-name');
+  if (attachedImage) {
+    nameEl.textContent = '📎 ' + (attachedImage.name || 'file');
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function removeAttachment() {
+  attachedImage = null;
+  updateAttachPreview();
+  WebApp?.HapticFeedback?.impactOccurred('light');
+}
+
+// ─── STREAMING STATE ──────────────────────────────────────────────────────
+function startStreaming() {
+  streaming = true;
+  sendBtn.disabled = false;         // keep clickable for cancel
+  sendBtn.classList.add('streaming');
+  sendBtn.innerHTML = '&#9632;';    // stop icon (square)
+  sendBtn.onclick = cancelStream;
+}
+
+function stopStreaming() {
+  streaming = false;
+  streamAbort = null;
+  sendBtn.classList.remove('streaming');
+  sendBtn.innerHTML = '&#9654;';    // play icon
+  sendBtn.onclick = sendMessage;
+  sendBtn.disabled = false;
+  // Remove streaming dot from any message
+  const dot = document.querySelector('.stream-dot');
+  if (dot) dot.classList.remove('stream-dot');
+  _streamDiv = null;
+}
+
+function cancelStream() {
+  if (streamAbort) {
+    streamAbort.abort();
+    streamAbort = null;
+  }
+  rmTyping();
+  stopStreaming();
+  addMsg('system', 'Stream cancelled');
+}
+
+// ─── CONTEXT BAR & MODEL INFO ────────────────────────────────────────────
+function _ctxClass(pct) {
+  if (pct >= 95) return 'critical';
+  if (pct > 80) return 'bad';
+  if (pct >= 50) return 'warn';
+  return 'good';
+}
+
+function _fmtTokens(n) {
+  if (!n) return '0';
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function _fmtDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return h + ':' + String(m % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+
+function updateContextBar() {
+  const ctxLen = _modelInfo?.context_length || 0;
+  const used = _sessionUsage.prompt_tokens || 0;
+  const pct = ctxLen > 0 ? Math.min(100, Math.round((used / ctxLen) * 100)) : 0;
+  const cls = _ctxClass(pct);
+
+  document.getElementById('ctx-model').textContent = _modelInfo?.model_short || '—';
+  document.getElementById('ctx-tokens').textContent = ctxLen > 0
+    ? 'ctx ' + _fmtTokens(used) + '/' + _fmtTokens(ctxLen)
+    : 'ctx —';
+
+  const fill = document.getElementById('ctx-fill');
+  fill.style.width = pct + '%';
+  fill.className = 'ctx-fill ' + cls;
+
+  const pctEl = document.getElementById('ctx-pct');
+  pctEl.textContent = pct + '%';
+  pctEl.className = 'ctx-pct ' + cls;
+}
+
+function startDurationTimer() {
+  if (_durationTimer) return;
+  _durationTimer = setInterval(() => {
+    document.getElementById('ctx-duration').textContent = _fmtDuration(Date.now() - _sessionStart);
+  }, 1000);
+}
+
+async function loadModelInfo() {
+  try {
+    _modelInfo = await api('/api/model-info');
+    updateContextBar();
+  } catch (_) {}
+}
+
+// ─── SEND ───────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text && !attachedImage) return;
+  input.value = '';
+  input.style.height = 'auto';
+  suggest.classList.remove('visible');
+  hideRetry();
+  WebApp?.HapticFeedback?.impactOccurred('light');
+
+  // Build content — multimodal if image attached
+  let msgContent;
+  if (attachedImage) {
+    msgContent = [
+      { type: 'image_url', image_url: { url: attachedImage.data_url } },
+      { type: 'text', text: text || 'Analyze this image' }
+    ];
+  } else {
+    msgContent = text;
+  }
+
+  if (text.startsWith('/')) {
+    // ── Intercept /spawn for quick agent spawning ──
+    if (text.startsWith('/spawn ') || text === '/spawn') {
+      const spawnPrompt = text.slice(7).trim();
+      if (!spawnPrompt) {
+        addMsg('system', 'Usage: /spawn <task prompt>');
+        input.value = '';
+        return;
+      }
+      addMsg('user', text);
+      input.value = '';
+      startStreaming();
+      try {
+        const res = await api('/api/agents', {
+          method: 'POST',
+          body: { prompt: spawnPrompt, mode: 'interactive' }
+        });
+        addMsg('system', `⚡ Spawned agent "${res.name}" — check the Agents tab`);
+        WebApp?.HapticFeedback?.notificationOccurred('success');
+      } catch (e) {
+        addMsg('system', 'Spawn failed: ' + e.message);
+      }
+      stopStreaming();
+      return;
+    }
+
+    addMsg('user', text, null, { img: attachedImage?.data_url });
+    attachedImage = null;
+    updateAttachPreview();
+    const parts = text.split(/\s+/);
+    const cmd = parts[0].slice(1);
+    const args = parts.slice(1).join(' ');
+    lastRequest = { text, isCommand: true, body: { command: '/' + cmd, args } };
+    addTyping();
+    startStreaming();
+    try {
+      const r = await api('/api/command', { method: 'POST', body: lastRequest.body });
+      rmTyping();
+      addMsg('command', r.output || '(no output)');
+      WebApp?.HapticFeedback?.impactOccurred('light');
+      const sid = r.session_id || sessionId;
+      if (sid) { sessionId = sid; persistSession(); }
+    } catch (e) {
+      rmTyping();
+      if (retryCount < 2 && (e.message.includes('fetch') || e.message.includes('network') || e.message.includes('Failed'))) {
+        showRetry(e.message);
+      } else {
+        addMsg('system', 'Error: ' + e.message);
+      }
+    }
+    stopStreaming();
+    return;
+  }
+
+  // Regular chat
+  addMsg('user', text, null, { img: attachedImage?.data_url });
+  attachedImage = null;
+  updateAttachPreview();
+  lastRequest = { text, isCommand: false };
+  addTyping();
+  startStreaming();
+
+  try {
+    const body = {
+      model: 'hermes-agent',
+      messages: [{ role: 'user', content: msgContent }],
+      stream: true
+    };
+    streamAbort = new AbortController();
+    const r = await fetchWithTimeout(API + '/v1/chat/completions', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(body),
+    });
+    const sid = r.headers.get('X-Hermes-Session-Id');
+    if (sid) { sessionId = sid; persistSession(); }
+    if (!r.ok) {
+      rmTyping();
+      if (retryCount < 2 && (r.status >= 500 || r.status === 0)) {
+        showRetry(`Server error ${r.status}`);
+      } else {
+        addMsg('system', `Error: ${r.status}`);
+      }
+      stopStreaming();
+      return;
+    }
+    // Don't rmTyping here — streamResponse handles it on first chunk
+    await streamResponse(r);
+  } catch (e) {
+    rmTyping();
+    if (e.message === 'Stream cancelled') {
+      addMsg('system', 'Cancelled');
+    } else if (retryCount < 2) {
+      showRetry(e.message === 'The user aborted a request' ? 'Request cancelled' : e.message);
+    } else {
+      addMsg('system', 'Connection: ' + e.message);
+    }
+  }
+  stopStreaming();
+}
+
+async function retryLast() {
+  if (!lastRequest) return;
+  hideRetry();
+  if (lastRequest.isCommand) {
+    input.value = lastRequest.text;
+  } else {
+    const userMsgs = msgs.querySelectorAll('.msg-user');
+    if (userMsgs.length) {
+      // Remove user msg + agent response
+      const lastUser = userMsgs[userMsgs.length - 1];
+      const next = lastUser.nextElementSibling;
+      if (next?.classList.contains('msg-agent')) next.remove();
+      lastUser.remove();
+    }
+  }
+  await sendMessage();
+}
+
+async function streamResponse(r) {
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let div = null, full = '', buf = '';
+  let firstChunk = true;
+  let _scrollRaf = null;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const d = line.slice(6).trim();
+        if (d === '[DONE]') break;
+        try {
+          const j = JSON.parse(d);
+          if (j.event === 'hermes.tool_progress') {
+            const p = j.data;
+            addToolMsg(p.tool, p.emoji, p.label, 'running...');
+            continue;
+          }
+          const delta = j.choices?.[0]?.delta;
+          // Capture usage from any chunk that has it (usually the final one)
+          if (j.usage) {
+            _sessionUsage.prompt_tokens = j.usage.prompt_tokens || _sessionUsage.prompt_tokens;
+            _sessionUsage.completion_tokens = j.usage.completion_tokens || _sessionUsage.completion_tokens;
+            _sessionUsage.total_tokens = j.usage.total_tokens || _sessionUsage.total_tokens;
+            updateContextBar();
+          }
+          if (delta?.content) {
+            // First content chunk: remove typing, haptic, add streaming dot
+            if (firstChunk) {
+              rmTyping();
+              WebApp?.HapticFeedback?.impactOccurred('light');
+              firstChunk = false;
+            }
+            full += delta.content;
+            if (!div) {
+              div = addMsg('agent', full);
+              div.querySelector('.msg-bubble').classList.add('stream-dot');
+              _streamDiv = div;
+            }
+            else div.querySelector('.msg-bubble').innerHTML = renderMsg(full);
+            // Debounced smooth scroll during streaming
+            if (!_scrollRaf) {
+              _scrollRaf = requestAnimationFrame(() => {
+                _scrollRaf = null;
+                scrollToBottom();
+              });
+            }
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Stream cancelled');
+    if (!full) { addMsg('system', 'Stream: ' + e.message); return; }
+  }
+  // Final render — remove streaming dot
+  if (div && full) {
+    const bubble = div.querySelector('.msg-bubble');
+    bubble.innerHTML = renderMsg(full);
+    bubble.classList.remove('stream-dot');
+  }
+  else if (!div && firstChunk) rmTyping();  // clean up if no content arrived
+  else if (!div) addMsg('system', 'No response');
+  _streamDiv = null;
+}
+
+// ─── SESSION ────────────────────────────────────────────────────────────────
+async function persistSession() {
+  if (!CS || !sessionId) return;
+  try { await CS.setItem('hermes_sid', sessionId); } catch (_) {}
+}
+
+async function loadSession() {
+  if (!CS) return null;
+  try { return await CS.getItem('hermes_sid'); } catch (_) { return null; }
+}
+
+// ─── STATUS ────────────────────────────────────────────────────────────────
+async function loadStatus() {
+  const bar = document.getElementById('status-bar');
+  const content = document.getElementById('status-content');
+  bar.innerHTML = `<div class="status-chip warn"><span class="status-dot"></span>Loading...</div>`;
+  content.innerHTML = `<div style="padding:20px;text-align:center;color:var(--hint);font-size:12px">Fetching system info...</div>`;
+
+  try {
+    const [hr, pr] = await Promise.allSettled([
+      api('/health'),
+      api('/api/processes').catch(() => ({ processes: [] })),
+    ]);
+    const h = hr.status === 'fulfilled' ? hr.value : null;
+    const p = pr.status === 'fulfilled' ? pr.value : null;
+    const processes = p?.processes || [];
+
+    const cpuGauge = h?.cpu_percent != null ? h.cpu_percent : null;
+    const memPct = h?.memory_percent;
+    const diskPct = h?.disk_percent;
+    const uptime = h?.uptime;
+    const load = h?.load_avg;
+
+    let uptimeStr = 'N/A';
+    if (uptime) {
+      const days = Math.floor(uptime / 86400);
+      const hrs = Math.floor((uptime % 86400) / 3600);
+      const mins = Math.floor((uptime % 3600) / 60);
+      uptimeStr = days > 0 ? `${days}d ${hrs}h` : hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+    }
+
+    const cpuClass = cpuGauge == null ? '' : cpuGauge > 80 ? 'high' : cpuGauge > 50 ? 'mid' : 'low';
+    const memClass = memPct == null ? '' : memPct > 80 ? 'high' : memPct > 50 ? 'mid' : 'low';
+    const diskClass = diskPct == null ? '' : diskPct > 80 ? 'high' : diskPct > 50 ? 'mid' : 'low';
+
+    bar.innerHTML = `
+      <div class="status-chip ok"><span class="status-dot"></span>Online</div>
+      <div class="status-chip ${cpuGauge == null ? 'warn' : cpuGauge > 80 ? 'error' : 'ok'}">
+        <span class="status-dot"></span>CPU ${cpuGauge != null ? cpuGauge + '%' : '—'}
+      </div>
+      <div class="status-chip ${memPct == null ? 'warn' : memPct > 80 ? 'error' : 'ok'}">
+        <span class="status-dot"></span>MEM ${memPct != null ? memPct + '%' : '—'}
+      </div>
+    `;
+
+    // ── Section 1: System Health + Processes ────────────────────────────
+    content.innerHTML = `
+      <div class="section">
+        <div class="section-header"><h2>System Health</h2></div>
+        ${cpuGauge != null ? `<div class="gauge-row">
+          <div class="gauge-label"><span>CPU</span><span>${cpuGauge}%</span></div>
+          <div class="gauge-bar"><div class="gauge-fill ${cpuClass}" style="width:${cpuGauge}%"></div></div>
+        </div>` : ''}
+        ${memPct != null ? `<div class="gauge-row">
+          <div class="gauge-label"><span>Memory</span><span>${memPct}%</span></div>
+          <div class="gauge-bar"><div class="gauge-fill ${memClass}" style="width:${memPct}%"></div></div>
+        </div>` : ''}
+        ${diskPct != null ? `<div class="gauge-row">
+          <div class="gauge-label"><span>Disk</span><span>${diskPct}%</span></div>
+          <div class="gauge-bar"><div class="gauge-fill ${diskClass}" style="width:${diskPct}%"></div></div>
+        </div>` : ''}
+        <div class="item"><div class="item-label">Uptime</div><div class="item-value">${uptimeStr}</div></div>
+        ${load ? `<div class="item"><div class="item-label">Load Avg</div><div class="item-value muted">${esc(Array.isArray(load) ? load.join(', ') : load)}</div></div>` : ''}
+        ${processes.length ? `
+          <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+            <div class="item" style="margin-bottom:4px"><div class="item-label">Processes</div><div class="item-value">${processes.length}</div></div>
+            <div class="process-list">
+              ${processes.slice(0, 8).map(p => `
+                <div class="process-row">
+                  <div class="proc-dot ${p.running ? 'running' : 'stopped'}"></div>
+                  <div class="proc-name">${esc(p.name || p.pid || '?')}</div>
+                  <div class="proc-meta">${p.cpu ? p.cpu + '% CPU' : ''} ${p.mem ? p.mem + '% MEM' : ''}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>` : ''}
+      </div>
+
+      <div class="section">
+        <div class="section-header"><h2>Quick Actions</h2></div>
+        <div class="quick-grid">
+          <button class="qbtn reload" onclick="quickCmd('/status')">Refresh</button>
+          <button class="qbtn" onclick="quickCmd('/cron list')">Cron Jobs</button>
+          <button class="qbtn" onclick="quickCmd('/model')">Model</button>
+          <button class="qbtn" onclick="quickCmd('/help')">Help</button>
+          <button class="qbtn" onclick="switchTab('agents')">Agents</button>
+          <button class="qbtn" onclick="switchTab('terminal'); input.value='/new '; input.focus();">New Session</button>
+          <button class="qbtn danger" onclick="quickCmd('/stop')">Stop All</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header"><h2>Account & Debug</h2></div>
+        <div class="item"><div class="item-label">Model</div><div class="item-value">${_modelInfo ? esc(_modelInfo.model_short) + ' <span style="color:var(--hint)">via ' + esc(_modelInfo.provider || '?') + '</span>' : '—'}</div></div>
+        <div class="item"><div class="item-label">Context</div><div class="item-value">${_modelInfo?.context_length ? _fmtTokens(_sessionUsage.prompt_tokens) + ' / ' + _fmtTokens(_modelInfo.context_length) + ' used' : '—'}</div></div>
+        <div class="item"><div class="item-label">Session tokens</div><div class="item-value">${_sessionUsage.total_tokens ? _fmtTokens(_sessionUsage.total_tokens) : '0'}</div></div>
+        <div class="item"><div class="item-label">Auth mode</div><div class="item-value">${isTelegram ? 'Telegram Ed25519' : apiToken ? 'Bearer token' : 'None'}</div></div>
+        <div class="item"><div class="item-label">User</div><div class="item-value">${WebApp?.initDataUnsafe?.user ? esc(WebApp.initDataUnsafe.user.first_name) + ' (id: ' + WebApp.initDataUnsafe.user.id + ')' : userId || '—'}</div></div>
+        <div class="item"><div class="item-label">Session ID</div><div class="item-value" style="font-size:10px;word-break:break-all">${sessionId || '—'}</div></div>
+      </div>
+    `;
+  } catch (e) {
+    bar.innerHTML = `<div class="status-chip error"><span class="status-dot"></span>Offline</div>`;
+    content.innerHTML = `<div class="section"><div style="padding:16px;color:var(--destructive)">${e.message}</div></div>`;
+  }
+}
+
+function quickCmd(cmd) { switchTab('terminal'); input.value = cmd + ' '; sendMessage(); }
+
+// ─── AGENTS ─────────────────────────────────────────────────────────────────
+
+function _fmtAgentUptime(seconds) {
+  if (!seconds && seconds !== 0) return '';
+  if (seconds < 60) return seconds + 's';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return m + 'm ' + s + 's';
+  const h = Math.floor(m / 60);
+  return h + 'h ' + (m % 60) + 'm';
+}
+
+async function loadAgents() {
+  const content = document.getElementById('agents-content');
+  content.innerHTML = '<div style="padding:20px;text-align:center;color:var(--hint);font-size:12px">Loading agents...</div>';
+  try {
+    const res = await api('/api/agents');
+    const agents = (res?.agents || []).filter(a => a.status !== 'dead' && a.status !== 'done');
+    if (!agents.length) {
+      content.innerHTML = `
+        <div class="agents-empty">
+          <div class="agents-empty-icon">&#9889;</div>
+          <div>No agents running</div>
+          <div style="margin-top:6px;font-size:11px;opacity:.6">Tap + to spawn one, or use /spawn in Terminal</div>
+        </div>`;
+      return;
+    }
+    content.innerHTML = agents.map(a => `
+      <div class="agent-card" id="agent-card-${esc(a.name)}">
+        <div class="agent-card-header" onclick="viewAgentOutput('${esc(a.name)}')">
+          <div class="agent-card-name">
+            <span class="agent-status-dot ${a.status}"></span>
+            ${esc(a.display_name)}
+          </div>
+          <button class="agent-kill-btn" onclick="event.stopPropagation();confirmKillAgent('${esc(a.name)}')" title="Kill agent">&#128465;</button>
+        </div>
+        <div style="cursor:pointer" onclick="viewAgentOutput('${esc(a.name)}')">
+          <div class="agent-card-meta">
+            <span class="tag">${esc(a.model)}</span>
+            <span class="tag">${a.mode}</span>
+            ${a.worktree ? '<span class="tag">worktree</span>' : ''}
+            <span>${_fmtAgentUptime(a.uptime)}</span>
+          </div>
+        </div>
+        <div id="agent-confirm-${esc(a.name)}" style="display:none"></div>
+      </div>
+    `).join('');
+  } catch (e) {
+    content.innerHTML = `<div style="padding:16px;color:var(--destructive)">${esc(e.message)}</div>`;
+  }
+}
+
+function confirmKillAgent(name) {
+  const el = document.getElementById('agent-confirm-' + name);
+  if (!el) return;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="agent-kill-confirm">
+      <span style="flex:1;color:var(--destructive)">Kill "${esc(name)}"?</span>
+      <button class="cbtn" onclick="document.getElementById('agent-confirm-${esc(name)}').style.display='none'">Cancel</button>
+      <button class="kbtn" onclick="doKillAgent('${esc(name)}')">Kill</button>
+    </div>`;
+  WebApp?.HapticFeedback?.impactOccurred('medium');
+}
+
+async function doKillAgent(name) {
+  try {
+    await api('/api/agents/' + encodeURIComponent(name), { method: 'DELETE' });
+    WebApp?.HapticFeedback?.notificationOccurred('success');
+    if (_activeAgent === name) closeAgentOutput();
+    loadAgents();
+  } catch (e) {
+    WebApp?.showAlert?.('Failed to kill: ' + e.message);
+  }
+}
+
+async function viewAgentOutput(name) {
+  _activeAgent = name;
+  document.getElementById('agents-list-view').style.display = 'none';
+  const ov = document.getElementById('agents-output-view');
+  ov.style.display = 'flex';
+  document.getElementById('agents-output-name').textContent = name;
+  await refreshAgentOutput();
+  clearInterval(_agentPollTimer);
+  _agentPollTimer = setInterval(refreshAgentOutput, 3000);
+  WebApp?.HapticFeedback?.impactOccurred('light');
+}
+
+let _lastAgentOutput = '';
+async function refreshAgentOutput() {
+  if (!_activeAgent) return;
+  try {
+    const res = await api('/api/agents/' + encodeURIComponent(_activeAgent));
+    const output = res.output || '(no output yet)';
+    const term = document.getElementById('agents-terminal');
+    // Only update DOM if output changed
+    if (output !== _lastAgentOutput) {
+      _lastAgentOutput = output;
+      term.textContent = output;
+      term.scrollTop = term.scrollHeight;
+    }
+    const dot = document.getElementById('agents-output-status');
+    dot.className = 'agent-status-dot ' + res.status;
+    if (res.status === 'dead' || res.status === 'done') {
+      clearInterval(_agentPollTimer);
+      _agentPollTimer = null;
+    }
+  } catch (e) { /* silent — will retry on next interval */ }
+}
+
+function closeAgentOutput() {
+  _activeAgent = null;
+  _lastAgentOutput = '';
+  clearInterval(_agentPollTimer);
+  _agentPollTimer = null;
+  document.getElementById('agents-output-view').style.display = 'none';
+  document.getElementById('agents-list-view').style.display = 'flex';
+}
+
+async function sendAgentMessage() {
+  if (!_activeAgent) return;
+  const inp = document.getElementById('agents-input');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = '';
+  inp.style.height = 'auto';
+  try {
+    await api('/api/agents/' + encodeURIComponent(_activeAgent) + '/message', {
+      method: 'POST',
+      body: { message: msg }
+    });
+    setTimeout(refreshAgentOutput, 2000);
+  } catch (e) {
+    WebApp?.showAlert?.('Failed to send: ' + e.message);
+  }
+}
+
+function handleAgentKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAgentMessage();
+  }
+}
+
+// ─── SPAWN MODAL ────────────────────────────────────────────────────────────
+
+function openSpawnModal() {
+  document.getElementById('spawn-modal-overlay').classList.add('open');
+  document.getElementById('spawn-modal-title').textContent = 'Spawn Agent';
+  document.getElementById('spawn-name').value = '';
+  document.getElementById('spawn-prompt').value = '';
+  _spawnMode = 'interactive';
+  _spawnWorktree = false;
+  updateSpawnModeChips();
+  document.getElementById('spawn-worktree-chip').classList.remove('active');
+  document.getElementById('spawn-error').style.display = 'none';
+  document.getElementById('spawn-submit-btn').disabled = false;
+  document.getElementById('spawn-submit-btn').innerHTML = '&#9889; Spawn Agent';
+  setTimeout(() => document.getElementById('spawn-prompt').focus(), 100);
+}
+
+function closeSpawnModal(event) {
+  if (event && event.target !== document.getElementById('spawn-modal-overlay')) return;
+  document.getElementById('spawn-modal-overlay').classList.remove('open');
+}
+
+function setSpawnMode(mode) {
+  _spawnMode = mode;
+  updateSpawnModeChips();
+}
+
+function updateSpawnModeChips() {
+  document.querySelectorAll('#spawn-mode-chips .cron-chip').forEach(c => {
+    const label = c.textContent.toLowerCase().replace(/[- ]/g, '');
+    c.classList.toggle('active', label === _spawnMode.replace('-', ''));
+  });
+}
+
+function toggleSpawnWorktree() {
+  _spawnWorktree = !_spawnWorktree;
+  document.getElementById('spawn-worktree-chip').classList.toggle('active', _spawnWorktree);
+  WebApp?.HapticFeedback?.selectionChanged();
+}
+
+async function submitSpawn() {
+  const name = document.getElementById('spawn-name').value.trim();
+  const prompt = document.getElementById('spawn-prompt').value.trim();
+  const errEl = document.getElementById('spawn-error');
+  const btn = document.getElementById('spawn-submit-btn');
+
+  if (!prompt) {
+    errEl.textContent = 'Task prompt is required';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Spawning...';
+  WebApp?.HapticFeedback?.impactOccurred('medium');
+
+  try {
+    const res = await api('/api/agents', {
+      method: 'POST',
+      body: {
+        name: name || undefined,
+        prompt,
+        mode: _spawnMode,
+        worktree: _spawnWorktree,
+      }
+    });
+    if (!res.name) throw new Error(res.error || 'spawn failed');
+    closeSpawnModal();
+    WebApp?.HapticFeedback?.notificationOccurred('success');
+    // Auto-switch to agents tab and show the new agent
+    switchTab('agents');
+  } catch (e) {
+    errEl.textContent = e.message || 'Spawn failed';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#9889; Spawn Agent';
+  }
+}
+
+// ─── CRON ─────────────────────────────────────────────────────────────────
+async function loadCron() {
+  const content = document.getElementById('cron-content');
+  try {
+    const raw = await api('/api/jobs');
+    const jobs = raw?.jobs || raw || [];
+    if (!Array.isArray(jobs) || !jobs.length) {
+      content.innerHTML = '<div class="cron-empty">No scheduled jobs — use /cron to create one</div>';
+      return;
+    }
+
+    // Timeline: next 5 upcoming
+    const now = Date.now();
+    const upcoming = jobs
+      .filter(j => j.next_run_at)
+      .sort((a, b) => new Date(a.next_run_at) - new Date(b.next_run_at))
+      .slice(0, 5);
+
+    let html = '';
+    if (upcoming.length) {
+      html += `<div class="cron-timeline">
+        <div class="tl-header">Next Scheduled</div>`;
+      upcoming.forEach(j => {
+        const nextDate = new Date(j.next_run_at);
+        const timeStr = nextDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dateStr = nextDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        const active = j.enabled && j.state !== 'paused';
+        html += `<div class="tl-event">
+          <div class="tl-time">${timeStr}</div>
+          <div class="tl-dot ${active ? 'running' : 'pending'}"></div>
+          <div class="tl-info">
+            <div class="tl-name">${esc(j.name)}</div>
+            <div class="tl-meta">${dateStr}</div>
+          </div>
+          <div class="tl-line"></div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += jobs.map(j => {
+      const active = j.enabled && j.state !== 'paused';
+      const last = j.last_run_at ? new Date(j.last_run_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never';
+      const st = j.last_status || '';
+      const stc = st === 'ok' ? 'positive' : st === 'error' ? 'negative' : 'muted';
+      const sched = j.schedule_display || (typeof j.schedule === 'string' ? j.schedule : '');
+      const rep = j.repeat;
+      let repStr = '';
+      if (rep) repStr = rep.times ? ` (${rep.completed || 0}/${rep.times})` : ` (${rep.completed || 0} runs)`;
+      return `<div class="cron-card" id="cron-card-${j.id}">
+        <div class="cron-name">
+          <span class="process-dot ${active ? 'running' : 'stopped'}"></span>
+          ${esc(j.name || (j.id || '').slice(0, 8))}
+        </div>
+        <div class="cron-schedule">${esc(sched)}</div>
+        <div class="cron-meta">Last: ${last} &middot; <span class="item-value ${stc}">${esc(st)}</span>${esc(repStr)}</div>
+        <div class="cron-actions">
+          ${active
+            ? `<button class="cron-btn pause" onclick="cronAct('${j.id}','pause')">Pause</button>`
+            : `<button class="cron-btn resume" onclick="cronAct('${j.id}','resume')">Resume</button>`}
+          <button class="cron-btn run" onclick="cronAct('${j.id}','run')">Run Now</button>
+          <button class="cron-btn edit" onclick="editCronJob('${j.id}')">&#9998;</button>
+          <button class="cron-btn delete" onclick="confirmDeleteCron('${j.id}','${esc(j.name || j.id)}')">&#128465;</button>
+        </div>
+        <div id="cron-del-confirm-${j.id}"></div>
+      </div>`;
+    }).join('');
+    content.innerHTML = html;
+  } catch (e) {
+    content.innerHTML = `<div class="cron-empty" style="color:var(--destructive)">Error: ${e.message}</div>`;
+  }
+}
+
+async function cronAct(id, action) {
+  WebApp?.HapticFeedback?.impactOccurred('medium');
+  try {
+    if (action === 'run') { await api(`/api/jobs/${id}/run`, { method: 'POST' }); toast('Job triggered', 2000, true); }
+    else if (action === 'pause') { await api(`/api/jobs/${id}/pause`, { method: 'POST' }); loadCron(); }
+    else if (action === 'resume') { await api(`/api/jobs/${id}/resume`, { method: 'POST' }); loadCron(); }
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+// ─── CRON MODAL: Create / Edit / Delete ─────────────────────────────────
+let _cronEditId = null; // null = create mode, string = edit mode
+
+function openCronModal(job) {
+  _cronEditId = job ? job.id : null;
+  document.getElementById('cron-modal-title').textContent = job ? 'Edit Cron Job' : 'New Cron Job';
+  document.getElementById('cron-submit-btn').textContent = job ? 'Save Changes' : 'Create Job';
+  document.getElementById('cron-field-name').value = job ? (job.name || '') : '';
+  document.getElementById('cron-field-schedule').value = job ? (job.schedule || job.schedule_display || '') : '';
+  document.getElementById('cron-field-prompt').value = job ? (job.prompt || '') : '';
+  const repField = document.getElementById('cron-field-repeat');
+  if (job && job.repeat && job.repeat.times) {
+    repField.value = job.repeat.times;
+  } else {
+    repField.value = '';
+  }
+  highlightActiveChip();
+  document.getElementById('cron-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('cron-field-name').focus(), 350);
+  WebApp?.HapticFeedback?.impactOccurred('light');
+}
+
+function closeCronModal(event) {
+  if (event && event.target !== document.getElementById('cron-modal-overlay')) return;
+  document.getElementById('cron-modal-overlay').classList.remove('open');
+  _cronEditId = null;
+}
+
+function setSchedule(s) {
+  document.getElementById('cron-field-schedule').value = s;
+  highlightActiveChip();
+}
+
+function highlightActiveChip() {
+  const val = document.getElementById('cron-field-schedule').value.trim();
+  document.querySelectorAll('.cron-chip').forEach(c => {
+    c.classList.toggle('active', c.textContent.trim() && c.getAttribute('onclick').includes(`'${val}'`));
+  });
+}
+
+async function submitCronJob() {
+  const name = document.getElementById('cron-field-name').value.trim();
+  const schedule = document.getElementById('cron-field-schedule').value.trim();
+  const prompt = document.getElementById('cron-field-prompt').value.trim();
+  const repeatRaw = document.getElementById('cron-field-repeat').value;
+
+  if (!name) { toast('Name is required'); return; }
+  if (!schedule) { toast('Schedule is required'); return; }
+  if (!prompt && !_cronEditId) { toast('Prompt is required'); return; }
+
+  const body = { name, schedule };
+  if (prompt) body.prompt = prompt;
+  if (repeatRaw) body.repeat = parseInt(repeatRaw, 10);
+  body.deliver = 'local';
+
+  WebApp?.HapticFeedback?.impactOccurred('medium');
+  const btn = document.getElementById('cron-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    if (_cronEditId) {
+      await api(`/api/jobs/${_cronEditId}`, { method: 'PATCH', body });
+      toast('Job updated', 2000, true);
+    } else {
+      await api('/api/jobs', { method: 'POST', body });
+      toast('Job created', 2000, true);
+    }
+    closeCronModal();
+    loadCron();
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = _cronEditId ? 'Save Changes' : 'Create Job';
+  }
+}
+
+async function editCronJob(id) {
+  WebApp?.HapticFeedback?.impactOccurred('light');
+  try {
+    const raw = await api(`/api/jobs/${id}`);
+    const job = raw?.job || raw;
+    openCronModal(job);
+  } catch (e) {
+    toast('Error loading job: ' + e.message);
+  }
+}
+
+function confirmDeleteCron(id, name) {
+  const el = document.getElementById(`cron-del-confirm-${id}`);
+  if (!el) return;
+  el.innerHTML = `<div class="cron-delete-confirm">
+    <span>Delete "${name}"?</span>
+    <button class="cancel-del" onclick="cancelDeleteCron('${id}')">Cancel</button>
+    <button class="confirm-del" onclick="deleteCronJob('${id}')">Delete</button>
+  </div>`;
+  WebApp?.HapticFeedback?.impactOccurred('medium');
+}
+
+function cancelDeleteCron(id) {
+  const el = document.getElementById(`cron-del-confirm-${id}`);
+  if (el) el.innerHTML = '';
+}
+
+async function deleteCronJob(id) {
+  try {
+    await api(`/api/jobs/${id}`, { method: 'DELETE' });
+    toast('Job deleted', 2000, true);
+    loadCron();
+  } catch (e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+// ─── CMD LIST (for autocomplete) ───────────────────────────────────────────
+window.cmdList = [
+  {name:'status', desc:'Show session info'},
+  {name:'new', desc:'Start fresh session'},
+  {name:'stop', desc:'Kill running processes'},
+  {name:'model', desc:'Switch model', args:'[name]'},
+  {name:'cron', desc:'Manage scheduled tasks', args:'[list|pause|resume|run]'},
+  {name:'config', desc:'Show configuration'},
+  {name:'help', desc:'Show all commands'},
+  {name:'commands', desc:'Browse commands & skills'},
+  {name:'clear', desc:'Clear screen'},
+  {name:'tools', desc:'Manage tools'},
+  {name:'skills', desc:'Search & manage skills'},
+  {name:'personality', desc:'Set personality'},
+  {name:'yolo', desc:'Toggle auto-approve'},
+  {name:'verbose', desc:'Cycle tool display'},
+  {name:'background', desc:'Run prompt in background'},
+  {name:'retry', desc:'Retry last message'},
+  {name:'history', desc:'Show conversation history'},
+  {name:'spawn', desc:'Spawn a background agent', args:'<task>'},
+];
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+(async function init() {
+  // Detect context: inside Telegram (has initData) vs open browser
+  isTelegram = !!(WebApp?.initData);
+
+  // Browser mode: enforce token auth
+  if (!isTelegram) {
+    // Try CloudStorage first (Telegram-native), then localStorage (browser)
+    let savedToken = null;
+    if (CS) { try { savedToken = await CS.getItem('hermes_api_token'); } catch (_) {} }
+    if (!savedToken) { try { savedToken = sessionStorage.getItem('hermes_api_token'); } catch (_) {} }
+    if (savedToken) {
+      apiToken = savedToken;
+      // Resume init with stored token
+      await checkConn();
+      setConn(connState);
+      initAfterAuth();
+    } else {
+      // No token — show the gate, stop init here
+      await checkConn();
+      setConn(connState);
+      showTokenGate();
+    }
+    return;
+  }
+
+  // Telegram mode: HMAC-authenticated, full access
+  try {
+    await checkConn();
+    setConn(connState);
+
+    // Load saved Bearer token (from previous browser login, stored in CloudStorage)
+    if (CS) {
+      try { const t = await CS.getItem('hermes_api_token'); if (t) apiToken = t; } catch (_) {}
+    }
+
+    // Load existing session or create a new one immediately (before user can send)
+    let savedSid = null;
+    if (CS) {
+      try { savedSid = await CS.getItem('hermes_sid'); } catch (_) {}
+    }
+    if (!savedSid) {
+      const token = crypto.randomUUID();
+      sessionId = 'miniapp-' + token;
+      if (CS) {
+        try { await CS.setItem('hermes_sid', sessionId); } catch (_) {}
+      }
+    } else {
+      sessionId = savedSid;
+    }
+
+    if (WebApp?.initDataUnsafe?.user?.id) {
+      userId = WebApp.initDataUnsafe.user.id;
+    }
+
+    // Pre-load commands now so drawer is instant on first open
+    loadCommands();
+    loadModelInfo();
+    startDurationTimer();
+
+    addMsg('system', 'Hermes Terminal — type /help or tap menu for commands.');
+    input.focus();
+
+    setInterval(async () => {
+      if (activeTab === 'status') loadStatus();
+      if (activeTab === 'cron') loadCron();
+      await checkConn();
+    }, 30000);
+  } catch(e) { console.error('[Hermes TUI] init error:', e); }
+})();
+</script>
+</body>
+</html>

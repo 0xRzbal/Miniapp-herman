@@ -1,0 +1,35 @@
+# /home/YOU/.config/systemd/user/hermes-gateway.service
+# Install:  cp hermes-gateway.service ~/.config/systemd/user/
+# Enable:   systemctl --user enable hermes-gateway
+# Start:    systemctl --user start hermes-gateway
+# Logs:     journalctl --user -u hermes-gateway -f
+
+[Unit]
+Description=Hermes Agent Gateway
+After=network.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# Adjust the path to your Hermes installation
+ExecStart=/home/YOU/.hermes/hermes-agent/venv/bin/python -m hermes_cli.main gateway run --replace
+WorkingDirectory=/home/YOU/.hermes/hermes-agent
+Environment="PATH=/home/YOU/.hermes/hermes-agent/venv/bin:/usr/bin:/home/YOU/.local/bin:/usr/local/bin"
+Environment="VIRTUAL_ENV=/home/YOU/.hermes/hermes-agent/venv"
+Environment="HERMES_HOME=/home/YOU/.hermes"
+# — Required for Mini App auth —
+Environment="API_SERVER_KEY=YOUR_API_KEY_HERE"
+Environment="TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE"
+Environment="TELEGRAM_OWNER_ID=YOUR_USER_ID_HERE"
+Environment="TELEGRAM_ALLOWED_USERS=YOUR_USER_ID_HERE"
+Restart=on-failure
+RestartSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

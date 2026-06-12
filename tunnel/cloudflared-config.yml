@@ -1,0 +1,18 @@
+# Cloudflare Tunnel Configuration
+# Install:  cloudflared tunnel login
+# Create:   cloudflared tunnel create hermes
+# Route:    cloudflared tunnel route dns hermes YOUR_DOMAIN
+# Run:      cloudflared tunnel run hermes
+#
+# Config location: ~/.cloudflared/config.yml
+
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /home/YOU/.cloudflared/YOUR_TUNNEL_ID.json
+
+ingress:
+  # Hermes API + Telegram Mini App
+  - hostname: YOUR_DOMAIN
+    service: http://localhost:8642
+
+  # Catch-all
+  - service: http_status:404
