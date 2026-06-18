@@ -1,7 +1,0 @@
-{
-  "miniapp_only": {
-    "hub": true,
-    "mail": true,
-    "router": true
-  }
-}
