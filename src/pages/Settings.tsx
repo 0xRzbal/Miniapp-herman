@@ -42,7 +42,7 @@ export default function Settings() {
   };
 
   const services: { key: keyof MiniappOnlySettings; label: string; desc: string }[] = [
-    { key: 'hub', label: 'Hub', desc: 'Lock Hub to Telegram Mini App only.' },
+    { key: 'hub', label: 'Full Access', desc: 'Block external browser access. Only Telegram Mini App allowed' },
     { key: 'mail', label: 'Mail', desc: 'Block JoeMail external browser access.' },
     { key: 'router', label: '9Router', desc: 'Block 9Router external browser access.' },
   ];
