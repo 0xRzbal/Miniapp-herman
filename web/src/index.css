@@ -1,6 +1,65 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ */
+/* App Loader — full-screen overlay, removed once React mounts         */
+/* ------------------------------------------------------------------ */
+#app-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #041C1C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+#app-loader.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loader-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.loader-brand {
+  font-family: "Mondwest", Arial, sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #ffe6cb;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.loader-bar {
+  width: 200px;
+  height: 4px;
+  background: rgba(255, 230, 203, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.loader-fill {
+  height: 100%;
+  width: 0;
+  background: #ffe6cb;
+  border-radius: 2px;
+  animation: loader-progress 1.8s ease forwards;
+}
+@keyframes loader-progress {
+  0% { width: 0; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+.loader-sub {
+  font-family: "Courier Prime", monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 230, 203, 0.5);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ */
 /* Hermes Agent — Design tokens                                        */
 /* Matched to hermes-agent.nousresearch.com (dark teal theme)          */
 /* ------------------------------------------------------------------ */

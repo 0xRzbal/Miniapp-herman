@@ -47,6 +47,27 @@ export default function App() {
   const [animKey, setAnimKey] = useState(0);
   const initialRef = useRef(true);
 
+  // Remove loader once app is mounted and fonts are ready
+  useEffect(() => {
+    const loader = document.getElementById("app-loader");
+    if (!loader) return;
+
+    const dismiss = () => {
+      loader.classList.add("done");
+      // Remove from DOM after fade transition
+      setTimeout(() => loader.remove(), 700);
+    };
+
+    // Wait for fonts + minimum display time (so progress bar finishes)
+    Promise.all([
+      document.fonts.ready,
+      new Promise((r) => setTimeout(r, 1800)),
+    ]).then(dismiss);
+
+    // Failsafe: remove after 4s no matter what
+    setTimeout(dismiss, 4000);
+  }, []);
+
   useEffect(() => {
     if (initialRef.current) {
       initialRef.current = false;
