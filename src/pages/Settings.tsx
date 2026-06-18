@@ -1,64 +1,85 @@
 import { useState, useEffect } from 'react';
-import { APP_NAME, APP_VERSION, DEFAULT_API_BASE } from '../config';
-import { showToast } from '../components/Toast';
+import { APP_NAME, APP_VERSION } from '../config';
+import { apiFetch } from '../lib/api';
+
+interface MiniappOnlySettings {
+  hub: boolean;
+  mail: boolean;
+  router: boolean;
+}
 
 export default function Settings() {
-  const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [miniappOnly, setMiniappOnly] = useState<MiniappOnlySettings>({ hub: false, mail: false, router: false });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setApiBase(localStorage.getItem('api_base') || DEFAULT_API_BASE);
-    setTheme((localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
+    apiFetch<{ miniapp_only: MiniappOnlySettings | boolean }>('/api/settings')
+      .then((s) => {
+        const mo = s.miniapp_only;
+        if (typeof mo === 'object' && mo !== null) {
+          setMiniappOnly({ hub: !!mo.hub, mail: !!mo.mail, router: !!mo.router });
+        } else {
+          // Backward compat: old boolean → apply to all
+          const val = !!mo;
+          setMiniappOnly({ hub: val, mail: val, router: val });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const saveApiBase = () => {
-    localStorage.setItem('api_base', apiBase);
-    showToast('API URL saved', 'success');
+  const toggleService = async (service: keyof MiniappOnlySettings) => {
+    const next = { ...miniappOnly, [service]: !miniappOnly[service] };
+    setMiniappOnly(next);
+    try {
+      await apiFetch('/api/settings', {
+        method: 'POST',
+        body: JSON.stringify({ key: 'miniapp_only', value: next }),
+      });
+    } catch {
+      setMiniappOnly(miniappOnly); // revert on error
+    }
   };
 
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-  };
+  const services: { key: keyof MiniappOnlySettings; label: string; desc: string }[] = [
+    { key: 'hub', label: 'Hub', desc: 'Block rzbal Hub external browser access.' },
+    { key: 'mail', label: 'Mail', desc: 'Block JoeMail external browser access.' },
+    { key: 'router', label: '9Router', desc: 'Block 9Router external browser access.' },
+  ];
 
   return (
     <div>
+      <div className="section-title">Access Control</div>
       <div className="card">
-        <h2>API Configuration</h2>
-        <p style={{ marginBottom: 12, fontSize: 13 }}>
-          Set the backend API URL. Default: {DEFAULT_API_BASE}
-        </p>
-        <input
-          className="input"
-          value={apiBase}
-          onChange={(e) => setApiBase(e.target.value)}
-          placeholder="http://localhost:9122"
-        />
-        <div style={{ marginTop: 10 }}>
-          <button className="btn btn-primary" onClick={saveApiBase}>Save</button>
-        </div>
+        {services.map((svc, i) => (
+          <div className="toggle-row" key={svc.key} style={i === services.length - 1 ? { borderBottom: 'none' } : undefined}>
+            <div>
+              <span className="list-item-label">MiniApp Only — {svc.label}</span>
+              <div className="list-item-desc">{svc.desc}</div>
+            </div>
+            <button
+              className={`toggle ${miniappOnly[svc.key] ? 'active' : ''}`}
+              onClick={() => toggleService(svc.key)}
+              disabled={loading}
+            />
+          </div>
+        ))}
       </div>
 
+      <div className="section-title">About</div>
       <div className="card">
-        <h2>Appearance</h2>
-        <div className="toggle-row">
-          <span>Dark Mode</span>
-          <button
-            className={`toggle ${theme === 'dark' ? 'active' : ''}`}
-            onClick={toggleTheme}
-          />
+        <div className="list-item">
+          <span className="list-item-label">App</span>
+          <span className="list-item-value">{APP_NAME}</span>
         </div>
-      </div>
-
-      <div className="card">
-        <h2>About</h2>
-        <p><strong>{APP_NAME}</strong> v{APP_VERSION}</p>
-        <p style={{ marginTop: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-          A customizable Telegram Mini App template.
-          Fork and extend with your own tools.
-        </p>
+        <div className="list-item">
+          <span className="list-item-label">Version</span>
+          <span className="list-item-value">{APP_VERSION}</span>
+        </div>
+        <div className="list-item" style={{ borderBottom: 'none' }}>
+          <span className="list-item-label">Powered by</span>
+          <span className="list-item-value">Hermes Agent</span>
+        </div>
       </div>
     </div>
   );

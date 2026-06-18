@@ -1,15 +1,8 @@
-import { DEFAULT_API_BASE } from '../config';
-
-export function getApiBase(): string {
-  return localStorage.getItem('api_base') || DEFAULT_API_BASE;
-}
-
 export async function apiFetch<T = unknown>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
-  const base = getApiBase();
-  const res = await fetch(`${base}${path}`, {
+  const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });

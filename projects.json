@@ -1,0 +1,14 @@
+{
+  "projects": [
+    {
+      "id": "9router",
+      "name": "9Router",
+      "icon": "↻",
+      "url": "https://9router.rzbal.xyz",
+      "domain": "9router.rzbal.xyz",
+      "entryPath": "/login",
+      "port": 20128,
+      "enabled": true
+    }
+  ]
+}
