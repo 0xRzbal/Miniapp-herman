@@ -62,53 +62,171 @@ registerTool({
   id: 'transform',
   name: 'Text Transform',
   icon: 'Aa',
-  description: 'Transform text to uppercase, lowercase, or reversed.',
+  description: 'Transform, convert, encode text.',
   placeholder: 'Enter text to transform...',
   options: [
     { label: 'UPPERCASE', value: 'upper' },
     { label: 'lowercase', value: 'lower' },
+    { label: 'Title Case', value: 'title' },
+    { label: 'Sentence case', value: 'sentence' },
+    { label: 'camelCase', value: 'camel' },
+    { label: 'snake_case', value: 'snake' },
+    { label: 'kebab-case', value: 'kebab' },
     { label: 'Reverse', value: 'reverse' },
+    { label: 'Base64 Encode', value: 'b64enc' },
+    { label: 'Base64 Decode', value: 'b64dec' },
+    { label: 'URL Encode', value: 'urlencode' },
+    { label: 'URL Decode', value: 'urldecode' },
+    { label: 'Trim Lines', value: 'trim' },
+    { label: 'Remove Duplicates', value: 'dedup' },
+    { label: 'Sort Lines', value: 'sort' },
+    { label: 'Reverse Lines', value: 'revlines' },
+    { label: 'Word Count', value: 'wordcount' },
+    { label: 'Char Count', value: 'charcount' },
   ],
 }, (body) => {
   const { text, mode } = body;
   if (typeof text !== 'string') throw new Error('text is required');
+  const lines = text.split(/\r?\n/);
   switch (mode) {
     case 'lower': return text.toLowerCase();
+    case 'title': return text.replace(/\b\w/g, c => c.toUpperCase());
+    case 'sentence': return text.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, c => c.toUpperCase());
+    case 'camel': return text.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (_, c) => c.toUpperCase()).replace(/^[A-Z]/, c => c.toLowerCase());
+    case 'snake': return text.trim().toLowerCase().replace(/[\s\-]+/g, '_').replace(/[^a-z0-9_]/g, '');
+    case 'kebab': return text.trim().toLowerCase().replace(/[\s_]+/g, '-').replace(/[^a-z0-9\-]/g, '');
     case 'reverse': return text.split('').reverse().join('');
+    case 'b64enc': return Buffer.from(text, 'utf-8').toString('base64');
+    case 'b64dec': return Buffer.from(text, 'base64').toString('utf-8');
+    case 'urlencode': return encodeURIComponent(text);
+    case 'urldecode': return decodeURIComponent(text);
+    case 'trim': return lines.map(l => l.trim()).filter(l => l.length > 0).join('\n');
+    case 'dedup': return [...new Set(lines)].join('\n');
+    case 'sort': return lines.sort().join('\n');
+    case 'revlines': return lines.reverse().join('\n');
+    case 'wordcount': {
+      const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+      const chars = text.length;
+      const lineCount = lines.length;
+      return `${words} words | ${chars} chars | ${lineCount} lines`;
+    }
+    case 'charcount': {
+      const noSpace = text.replace(/\s/g, '').length;
+      return `${text.length} total | ${noSpace} no-space | ${new Set(text).size} unique chars`;
+    }
     default: return text.toUpperCase();
   }
 });
 
 registerTool({
   id: 'format-json',
-  name: 'JSON Formatter',
+  name: 'JSON Tools',
   icon: '{ }',
-  description: 'Format and validate JSON input.',
+  description: 'Format, validate, convert JSON.',
   placeholder: 'Paste JSON here...',
+  options: [
+    { label: 'Prettify', value: 'prettify' },
+    { label: 'Minify', value: 'minify' },
+    { label: 'Validate', value: 'validate' },
+    { label: 'Sort Keys', value: 'sortkeys' },
+    { label: 'Escape', value: 'escape' },
+    { label: 'Unescape', value: 'unescape' },
+    { label: 'Keys Only', value: 'keys' },
+    { label: 'Values Only', value: 'values' },
+    { label: 'Flatten', value: 'flatten' },
+    { label: 'Line Count', value: 'linecount' },
+  ],
 }, (body) => {
-  const { text } = body;
+  const { text, mode } = body;
   if (typeof text !== 'string') throw new Error('text is required');
-  return JSON.stringify(JSON.parse(text), null, 2);
+  switch (mode) {
+    case 'prettify': return JSON.stringify(JSON.parse(text), null, 2);
+    case 'minify': return JSON.stringify(JSON.parse(text));
+    case 'validate': {
+      const parsed = JSON.parse(text);
+      const type = Array.isArray(parsed) ? 'array' : typeof parsed;
+      const keys = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).length : 0;
+      return `Valid JSON (${type}${keys ? `, ${keys} keys` : ''})`;
+    }
+    case 'sortkeys': {
+      const sort = (obj) => {
+        if (Array.isArray(obj)) return obj.map(sort);
+        if (obj && typeof obj === 'object') return Object.keys(obj).sort().reduce((acc, k) => { acc[k] = sort(obj[k]); return acc; }, {});
+        return obj;
+      };
+      return JSON.stringify(sort(JSON.parse(text)), null, 2);
+    }
+    case 'escape': return JSON.stringify(text);
+    case 'unescape': return JSON.parse(text);
+    case 'keys': {
+      const obj = JSON.parse(text);
+      if (Array.isArray(obj)) return obj.map((_, i) => i).join('\n');
+      return Object.keys(obj).join('\n');
+    }
+    case 'values': {
+      const obj = JSON.parse(text);
+      if (Array.isArray(obj)) return obj.map(v => typeof v === 'string' ? v : JSON.stringify(v)).join('\n');
+      return Object.values(obj).map(v => typeof v === 'string' ? v : JSON.stringify(v)).join('\n');
+    }
+    case 'flatten': {
+      const flat = (obj, prefix = '') => {
+        const result = {};
+        for (const [k, v] of Object.entries(obj)) {
+          const key = prefix ? `${prefix}.${k}` : k;
+          if (v && typeof v === 'object' && !Array.isArray(v)) Object.assign(result, flat(v, key));
+          else result[key] = v;
+        }
+        return result;
+      };
+      return JSON.stringify(flat(JSON.parse(text)), null, 2);
+    }
+    case 'linecount': {
+      const parsed = JSON.parse(text);
+      const pretty = JSON.stringify(parsed, null, 2);
+      const keys = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).length : 0;
+      return `${pretty.split('\n').length} lines | ${text.length} chars | ${keys} top-level keys`;
+    }
+    default: return JSON.stringify(JSON.parse(text), null, 2);
+  }
 });
 
 registerTool({
   id: 'strip-text',
   name: 'Extract Fields',
   icon: '|x|',
-  description: 'Split text by delimiter and extract specific fields.',
+  description: 'Split, extract, regex match from text.',
   placeholder: 'Paste text here...',
   hasDelimiter: true,
+  options: [
+    { label: 'Split & Extract', value: 'default' },
+    { label: 'Extract Emails', value: 'emails' },
+    { label: 'Extract URLs', value: 'urls' },
+    { label: 'Extract IPs', value: 'ips' },
+    { label: 'Extract Numbers', value: 'numbers' },
+    { label: 'Digits Only', value: 'digits' },
+    { label: 'Letters Only', value: 'letters' },
+    { label: 'Alphanumeric', value: 'alphanum' },
+    { label: 'Remove Empty Lines', value: 'lines' },
+    { label: 'Deduplicate Lines', value: 'dedup' },
+    { label: 'Sort Lines', value: 'sort' },
+    { label: 'Line Numbers', value: 'linenum' },
+  ],
 }, (body) => {
-  // Frontend handles this client-side; this is a fallback
   const { text, mode } = body;
   if (typeof text !== 'string') throw new Error('text is required');
+  const lines = text.split(/\r?\n/);
   switch (mode) {
+    case 'emails': return (text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || []).join('\n');
+    case 'urls': return (text.match(/https?:\/\/[^\s<>"'\]]+/g) || []).join('\n');
+    case 'ips': return (text.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) || []).join('\n');
+    case 'numbers': return (text.match(/-?\d+\.?\d*/g) || []).join('\n');
     case 'digits': return text.replace(/[^0-9]/g, '');
     case 'letters': return text.replace(/[^a-zA-Z]/g, '');
     case 'alphanum': return text.replace(/[^a-zA-Z0-9]/g, '');
-    case 'emails': return (text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || []).join('\n');
-    case 'urls': return (text.match(/https?:\/\/[^\s<>"'\]]+/g) || []).join('\n');
-    case 'lines': return text.split(/\r?\n/).filter(l => l.trim()).join('\n');
+    case 'lines': return lines.filter(l => l.trim()).join('\n');
+    case 'dedup': return [...new Set(lines)].join('\n');
+    case 'sort': return lines.sort().join('\n');
+    case 'linenum': return lines.map((l, i) => `${i + 1}: ${l}`).join('\n');
     default: return text.replace(/\s+/g, ' ').trim();
   }
 });

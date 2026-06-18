@@ -17,11 +17,13 @@ interface Tool {
   hasDelimiter?: boolean;
 }
 
-function ExtractFieldsTool({ onResult }: { onResult: (r: string) => void }) {
+function ExtractFieldsTool({ tool, onResult }: { tool: Tool; onResult: (r: string) => void }) {
   const [input, setInput] = useState('');
   const [delimiter, setDelimiter] = useState('|');
   const [fields, setFields] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [mode, setMode] = useState('default');
+  const [loading, setLoading] = useState(false);
 
   const detectDelimiter = (text: string): string => {
     const candidates = ['|', ',', ';', ':', '\t', '-'];
@@ -39,6 +41,11 @@ function ExtractFieldsTool({ onResult }: { onResult: (r: string) => void }) {
 
   const split = () => {
     if (!input.trim()) return showToast('Paste some text first', 'error');
+    if (mode !== 'default') {
+      // Server-side modes: send to API
+      runServerMode();
+      return;
+    }
     const dl = detectDelimiter(input);
     setDelimiter(dl);
     const regex = new RegExp(dl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
@@ -47,6 +54,22 @@ function ExtractFieldsTool({ onResult }: { onResult: (r: string) => void }) {
     setFields(parts);
     setSelected(new Set());
     showToast(`Found ${parts.length} fields`, 'info');
+  };
+
+  const runServerMode = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<{ result: string }>(`/api/tools/strip-text`, {
+        method: 'POST',
+        body: JSON.stringify({ text: input, mode }),
+      });
+      onResult(data.result);
+      showToast('Done', 'success');
+    } catch (err) {
+      showToast(`Error: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggle = (i: number) => setSelected(prev => {
@@ -63,12 +86,20 @@ function ExtractFieldsTool({ onResult }: { onResult: (r: string) => void }) {
 
   return (
     <>
+      {tool.options && (
+        <select className="select" style={{ width: '100%', marginBottom: 10 }}
+          value={mode} onChange={e => { setMode(e.target.value); setFields([]); setSelected(new Set()); }}>
+          {tool.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      )}
       <textarea className="textarea" placeholder="Paste text here..." value={input} onChange={e => setInput(e.target.value)} />
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-        <button className="btn btn-primary" onClick={split} style={{ flex: 1 }}>Split</button>
+        <button className="btn btn-primary" onClick={split} style={{ flex: 1 }} disabled={loading}>
+          {loading ? 'Running...' : mode === 'default' ? 'Split' : 'Run'}
+        </button>
         <button className="btn" onClick={() => { setInput(''); setFields([]); setSelected(new Set()); }}>Clear</button>
       </div>
-      {fields.length > 0 && (
+      {mode === 'default' && fields.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div className="list-item" style={{ padding: '10px 0' }}>
             <span className="list-item-label">{fields.length} fields</span>
@@ -119,9 +150,9 @@ export default function Tools() {
   useEffect(() => {
     const fallback = () => {
       setTools([
-        { id: 'transform', name: 'Text Transform', icon: 'Aa', description: 'Transform text.', placeholder: 'Enter text...' },
-        { id: 'format-json', name: 'JSON Formatter', icon: '{ }', description: 'Format JSON.', placeholder: 'Paste JSON...' },
-        { id: 'strip-text', name: 'Extract Fields', icon: '|x|', description: 'Split & extract.', placeholder: 'Paste text...', hasDelimiter: true },
+        { id: 'transform', name: 'Text Transform', icon: 'Aa', description: 'Transform text.', placeholder: 'Enter text...', options: [{ label: 'UPPERCASE', value: 'upper' }, { label: 'lowercase', value: 'lower' }] },
+        { id: 'format-json', name: 'JSON Tools', icon: '{ }', description: 'Format JSON.', placeholder: 'Paste JSON...', options: [{ label: 'Prettify', value: 'prettify' }, { label: 'Minify', value: 'minify' }] },
+        { id: 'strip-text', name: 'Extract Fields', icon: '|x|', description: 'Split & extract.', placeholder: 'Paste text...', hasDelimiter: true, options: [{ label: 'Split & Extract', value: 'default' }, { label: 'Extract Emails', value: 'emails' }] },
       ]);
       setActiveTool('transform');
     };
@@ -201,7 +232,7 @@ export default function Tools() {
       <div className="section-title">{tool?.name || 'Input'}</div>
       <div className="card">
         {isExtractFields ? (
-          <ExtractFieldsTool onResult={setResult} />
+          <ExtractFieldsTool tool={tool!} onResult={setResult} />
         ) : (
           <>
             {tool?.options && (
