@@ -19,72 +19,123 @@ interface Tool {
 
 // Tools that run entirely client-side (no server API needed)
 const LOCAL_TOOLS: Tool[] = [
-  { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Group lines by blank lines or consecutive pairs, join with delimiter.', placeholder: 'Paste text...' },
+  { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Group entries by paragraph, pick columns, join with delimiter.', placeholder: 'Paste text...' },
 ];
+
+/* ── Shared style helpers ─────────────────────────────── */
+const CHK_ON = { width: 18, height: 18, borderRadius: 4, border: '2px solid rgba(255,255,255,.4)', background: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 } as const;
+const CHK_OFF = { width: 18, height: 18, borderRadius: 4, border: '2px solid var(--border)', background: 'transparent', flexShrink: 0 } as const;
+const FIELD_BTN = (on: boolean) => ({
+  display: 'flex' as const, alignItems: 'center' as const, gap: 10, padding: '8px 12px', borderRadius: 8,
+  border: `1.5px solid ${on ? 'rgba(255,255,255,.25)' : 'var(--border)'}`,
+  background: on ? 'rgba(255,255,255,.04)' : 'transparent',
+  color: 'var(--text)', fontSize: 13, fontFamily: "'SF Mono', 'Fira Code', monospace",
+  cursor: 'pointer' as const, textAlign: 'left' as const, width: '100%' as const, transition: 'all 0.15s',
+});
 
 function PairLinesTool({ onResult }: { onResult: (r: string) => void }) {
   const [input, setInput] = useState('');
   const [delimiter, setDelimiter] = useState('|');
-  const [mode, setMode] = useState<'paragraph' | 'consecutive'>('paragraph');
+  const [stripSpaces, setStripSpaces] = useState(true);
+  const [parsed, setParsed] = useState<{ entries: string[][], maxCols: number } | null>(null);
+  const [selectedCols, setSelectedCols] = useState<Set<number>>(new Set());
 
-  const pair = () => {
+  /* Parse input: split by 2+ blank lines, each paragraph → lines */
+  const parse = () => {
     if (!input.trim()) return showToast('Paste some text first', 'error');
     const lines = input.split('\n');
-    let output: string;
-
-    if (mode === 'paragraph') {
-      // Group by paragraph (separated by 2+ consecutive blank lines)
-      const blocks: string[][] = [];
-      let current: string[] = [];
-      let blankRun = 0;
-      for (const line of lines) {
-        if (line.trim() === '') {
-          blankRun++;
-          if (blankRun >= 2 && current.length > 0) {
-            blocks.push(current);
-            current = [];
-          }
-        } else {
-          blankRun = 0;
-          // Remove all whitespace from each field
-          current.push(line.trim().replace(/\s+/g, ''));
-        }
+    const blocks: string[][] = [];
+    let current: string[] = [];
+    let blankRun = 0;
+    for (const line of lines) {
+      if (line.trim() === '') {
+        blankRun++;
+        if (blankRun >= 2 && current.length > 0) { blocks.push(current); current = []; }
+      } else {
+        blankRun = 0;
+        current.push(stripSpaces ? line.trim().replace(/\s+/g, '') : line.trim());
       }
-      if (current.length > 0) blocks.push(current);
-      output = blocks.map(b => b.join(delimiter)).join('\n');
-    } else {
-      // Strip all blank lines, pair consecutive non-empty lines
-      const nonEmpty = lines.map(l => l.trim().replace(/\s+/g, '')).filter(l => l.length > 0);
-      const pairs: string[] = [];
-      for (let i = 0; i < nonEmpty.length; i += 2) {
-        if (i + 1 < nonEmpty.length) {
-          pairs.push(nonEmpty[i] + delimiter + nonEmpty[i + 1]);
-        } else {
-          pairs.push(nonEmpty[i]); // odd line left as-is
-        }
-      }
-      output = pairs.join('\n');
     }
-
-    onResult(output);
-    showToast(`Generated ${output.split('\n').length} lines`, 'success');
+    if (current.length > 0) blocks.push(current);
+    if (!blocks.length) return showToast('No entries found', 'error');
+    const maxCols = Math.max(...blocks.map(b => b.length));
+    setParsed({ entries: blocks, maxCols });
+    setSelectedCols(new Set(Array.from({ length: maxCols }, (_, i) => i)));
+    showToast(`${blocks.length} entries, ${maxCols} column${maxCols > 1 ? 's' : ''}`, 'info');
   };
+
+  const toggleCol = (col: number) => setSelectedCols(prev => {
+    const next = new Set(prev);
+    next.has(col) ? next.delete(col) : next.add(col);
+    return next;
+  });
+
+  const extractCols = () => {
+    if (!parsed || !selectedCols.size) return showToast('Select at least one column', 'error');
+    const output = parsed.entries
+      .map(entry => {
+        const cols = [...selectedCols].sort((a, b) => a - b);
+        return cols.map(c => entry[c] ?? '').join(delimiter);
+      })
+      .join('\n');
+    onResult(output);
+    showToast('Extracted', 'success');
+  };
+
+  /* Build column summary: for each col, show first few values */
+  const colSummaries: { col: number, values: string[] }[] = [];
+  if (parsed) {
+    for (let c = 0; c < parsed.maxCols; c++) {
+      const values = parsed.entries.map(e => e[c]).filter(Boolean);
+      colSummaries.push({ col: c, values });
+    }
+  }
 
   return (
     <>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <select className="select" value={mode} onChange={e => setMode(e.target.value as 'paragraph' | 'consecutive')}>
-          <option value="paragraph">By paragraph (2+ blank lines)</option>
-          <option value="consecutive">Consecutive pairs (1+2, 3+4...)</option>
-        </select>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
         <input className="input" value={delimiter} onChange={e => setDelimiter(e.target.value)}
-          placeholder="Delimiter" style={{ width: 80, textAlign: 'center' }} />
+          placeholder="Delim" style={{ width: 70, textAlign: 'center' }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={stripSpaces} onChange={e => setStripSpaces(e.target.checked)}
+            style={{ accentColor: 'var(--accent)' }} />
+          Strip spaces
+        </label>
       </div>
-      <textarea className="textarea" placeholder="Paste text with entries separated by 2+ blank lines..." value={input} onChange={e => setInput(e.target.value)} />
+      <textarea className="textarea" placeholder="Paste entries separated by 2+ blank lines..." value={input} onChange={e => setInput(e.target.value)} />
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-        <button className="btn btn-primary" onClick={pair} style={{ flex: 1 }}>Pair Lines</button>
-        <button className="btn" onClick={() => { setInput(''); }}>Clear</button>
+        <button className="btn btn-primary" onClick={parse} style={{ flex: 1 }}>Parse</button>
+        <button className="btn" onClick={() => { setInput(''); setParsed(null); setSelectedCols(new Set()); }}>Clear</button>
       </div>
+
+      {parsed && (
+        <div style={{ marginTop: 14 }}>
+          <div className="list-item" style={{ padding: '10px 0' }}>
+            <span className="list-item-label">{parsed.entries.length} entries &times; {parsed.maxCols} cols</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="btn btn-sm btn-ghost" onClick={() => setSelectedCols(new Set(Array.from({ length: parsed.maxCols }, (_, i) => i)))}>All</button>
+              <button className="btn btn-sm btn-ghost" onClick={() => setSelectedCols(new Set())}>None</button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {colSummaries.map(({ col, values }) => (
+              <button key={col} onClick={() => toggleCol(col)} style={FIELD_BTN(selectedCols.has(col))}>
+                <span style={selectedCols.has(col) ? CHK_ON : CHK_OFF}>
+                  {selectedCols.has(col) ? '\u2713' : ''}
+                </span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 11, minWidth: 20 }}>Col {col + 1}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {values.slice(0, 3).join(', ')}{values.length > 3 ? '...' : ''}
+                </span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 10, marginLeft: 4 }}>({values.length})</span>
+              </button>
+            ))}
+          </div>
+          <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} onClick={extractCols} disabled={!selectedCols.size}>
+            Extract {selectedCols.size > 0 ? `(${selectedCols.size} col${selectedCols.size > 1 ? 's' : ''})` : ''}
+          </button>
+        </div>
+      )}
     </>
   );
 }
