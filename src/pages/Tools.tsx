@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { showToast } from '../components/Toast';
 
@@ -17,48 +17,55 @@ interface Tool {
   hasDelimiter?: boolean;
 }
 
+// Tools that run entirely client-side (no server API needed)
+const LOCAL_TOOLS: Tool[] = [
+  { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Group lines by blank lines or consecutive pairs, join with delimiter.', placeholder: 'Paste text...' },
+];
+
 function PairLinesTool({ onResult }: { onResult: (r: string) => void }) {
   const [input, setInput] = useState('');
   const [delimiter, setDelimiter] = useState('|');
-  const [mode, setMode] = useState<'blank' | 'consecutive'>('blank');
-  const [result, setResult] = useState('');
+  const [mode, setMode] = useState<'paragraph' | 'consecutive'>('paragraph');
 
   const pair = () => {
     if (!input.trim()) return showToast('Paste some text first', 'error');
     const lines = input.split('\n');
     let output: string;
 
-    if (mode === 'blank') {
-      // Group by blank line separation
+    if (mode === 'paragraph') {
+      // Group by paragraph (separated by 2+ consecutive blank lines)
       const blocks: string[][] = [];
       let current: string[] = [];
+      let blankRun = 0;
       for (const line of lines) {
         if (line.trim() === '') {
-          if (current.length > 0) {
+          blankRun++;
+          if (blankRun >= 2 && current.length > 0) {
             blocks.push(current);
             current = [];
           }
         } else {
-          current.push(line.trim());
+          blankRun = 0;
+          // Remove all whitespace from each field
+          current.push(line.trim().replace(/\s+/g, ''));
         }
       }
       if (current.length > 0) blocks.push(current);
       output = blocks.map(b => b.join(delimiter)).join('\n');
     } else {
-      // Pair consecutive non-empty lines
-      const nonEmpty = lines.map(l => l.trim()).filter(l => l.length > 0);
+      // Strip all blank lines, pair consecutive non-empty lines
+      const nonEmpty = lines.map(l => l.trim().replace(/\s+/g, '')).filter(l => l.length > 0);
       const pairs: string[] = [];
       for (let i = 0; i < nonEmpty.length; i += 2) {
         if (i + 1 < nonEmpty.length) {
           pairs.push(nonEmpty[i] + delimiter + nonEmpty[i + 1]);
         } else {
-          pairs.push(nonEmpty[i]); // odd line left
+          pairs.push(nonEmpty[i]); // odd line left as-is
         }
       }
       output = pairs.join('\n');
     }
 
-    setResult(output);
     onResult(output);
     showToast(`Generated ${output.split('\n').length} lines`, 'success');
   };
@@ -66,23 +73,18 @@ function PairLinesTool({ onResult }: { onResult: (r: string) => void }) {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <select className="select" value={mode} onChange={e => setMode(e.target.value as 'blank' | 'consecutive')}>
-          <option value="blank">By blank lines</option>
+        <select className="select" value={mode} onChange={e => setMode(e.target.value as 'paragraph' | 'consecutive')}>
+          <option value="paragraph">By paragraph (2+ blank lines)</option>
           <option value="consecutive">Consecutive pairs (1+2, 3+4...)</option>
         </select>
         <input className="input" value={delimiter} onChange={e => setDelimiter(e.target.value)}
           placeholder="Delimiter" style={{ width: 80, textAlign: 'center' }} />
       </div>
-      <textarea className="textarea" placeholder="Paste text with entries separated by blank lines..." value={input} onChange={e => setInput(e.target.value)} />
+      <textarea className="textarea" placeholder="Paste text with entries separated by 2+ blank lines..." value={input} onChange={e => setInput(e.target.value)} />
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
         <button className="btn btn-primary" onClick={pair} style={{ flex: 1 }}>Pair Lines</button>
-        <button className="btn" onClick={() => { setInput(''); setResult(''); }}>Clear</button>
+        <button className="btn" onClick={() => { setInput(''); }}>Clear</button>
       </div>
-      {result && (
-        <div style={{ marginTop: 14 }}>
-          <div className="result-area" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{result}</div>
-        </div>
-      )}
     </>
   );
 }
@@ -186,27 +188,30 @@ export default function Tools() {
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const mergedRef = useRef(false);
+
   useEffect(() => {
-    const fallback = () => {
-      setTools([
-        { id: 'transform', name: 'Text Transform', icon: 'Aa', description: 'Transform text.', placeholder: 'Enter text...', options: [{ label: 'UPPERCASE', value: 'upper' }, { label: 'lowercase', value: 'lower' }] },
-        { id: 'format-json', name: 'JSON Tools', icon: '{ }', description: 'Format JSON.', placeholder: 'Paste JSON...', options: [{ label: 'Prettify', value: 'prettify' }, { label: 'Minify', value: 'minify' }] },
-        { id: 'strip-text', name: 'Extract Fields', icon: '|x|', description: 'Split & extract.', placeholder: 'Paste text...', hasDelimiter: true, options: [{ label: 'Split & Extract', value: 'default' }, { label: 'Extract Emails', value: 'emails' }] },
-        { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Group lines by blank lines or consecutive pairs, join with delimiter.', placeholder: 'Paste text...' },
-      ]);
-      setActiveTool('pair-lines');
+    if (mergedRef.current) return;
+    mergedRef.current = true;
+
+    const loadTools = (serverTools: Tool[]) => {
+      // Always include local tools (pair-lines, etc.) in addition to server tools
+      const seen = new Set(serverTools.map(t => t.id));
+      const merged = [...serverTools, ...LOCAL_TOOLS.filter(t => !seen.has(t.id))];
+      setTools(merged);
+      merged.length && setActiveTool(merged[0].id);
     };
+
     fetch('/api/tools', { signal: AbortSignal.timeout(3000) })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(d => {
         if (d.tools?.length) {
-          setTools(d.tools);
-          setActiveTool(d.tools[0].id);
+          loadTools(d.tools);
         } else {
-          fallback();
+          loadTools([]);
         }
       })
-      .catch(() => { fallback(); });
+      .catch(() => { loadTools([]); });
   }, []);
 
   const tool = tools.find(t => t.id === activeTool) || tools[0];
