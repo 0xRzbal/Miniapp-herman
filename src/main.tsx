@@ -14,7 +14,7 @@ function showLanding() {
         <div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a1a1aa;background:rgba(255,255,255,.06);border:1px solid rgba(63,63,70,.5);border-radius:8px;padding:6px 14px;margin-bottom:16px">Telegram Mini App</div>
         <h1 style="font-size:22px;margin-bottom:8px">rzbal Hub</h1>
         <p style="color:#808080;font-size:14px;line-height:1.6">This app is available exclusively inside Telegram.</p>
-        <div style="margin-top:24px;font-size:11px;color:#555">by Joe</div>
+        <div style="margin-top:24px;font-size:11px;color:#555">by rzbal</div>
       </div>
     </div>`;
 }

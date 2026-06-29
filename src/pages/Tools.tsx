@@ -17,6 +17,76 @@ interface Tool {
   hasDelimiter?: boolean;
 }
 
+function PairLinesTool({ onResult }: { onResult: (r: string) => void }) {
+  const [input, setInput] = useState('');
+  const [delimiter, setDelimiter] = useState('|');
+  const [mode, setMode] = useState<'blank' | 'consecutive'>('blank');
+  const [result, setResult] = useState('');
+
+  const pair = () => {
+    if (!input.trim()) return showToast('Paste some text first', 'error');
+    const lines = input.split('\n');
+    let output: string;
+
+    if (mode === 'blank') {
+      // Group by blank line separation
+      const blocks: string[][] = [];
+      let current: string[] = [];
+      for (const line of lines) {
+        if (line.trim() === '') {
+          if (current.length > 0) {
+            blocks.push(current);
+            current = [];
+          }
+        } else {
+          current.push(line.trim());
+        }
+      }
+      if (current.length > 0) blocks.push(current);
+      output = blocks.map(b => b.join(delimiter)).join('\n');
+    } else {
+      // Pair consecutive non-empty lines
+      const nonEmpty = lines.map(l => l.trim()).filter(l => l.length > 0);
+      const pairs: string[] = [];
+      for (let i = 0; i < nonEmpty.length; i += 2) {
+        if (i + 1 < nonEmpty.length) {
+          pairs.push(nonEmpty[i] + delimiter + nonEmpty[i + 1]);
+        } else {
+          pairs.push(nonEmpty[i]); // odd line left
+        }
+      }
+      output = pairs.join('\n');
+    }
+
+    setResult(output);
+    onResult(output);
+    showToast(`Generated ${output.split('\n').length} lines`, 'success');
+  };
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <select className="select" value={mode} onChange={e => setMode(e.target.value as 'blank' | 'consecutive')}>
+          <option value="blank">By blank lines</option>
+          <option value="consecutive">Consecutive pairs (1+2, 3+4...)</option>
+        </select>
+        <input className="input" value={delimiter} onChange={e => setDelimiter(e.target.value)}
+          placeholder="Delimiter" style={{ width: 80, textAlign: 'center' }} />
+      </div>
+      <textarea className="textarea" placeholder="Paste text with entries separated by blank lines..." value={input} onChange={e => setInput(e.target.value)} />
+      <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <button className="btn btn-primary" onClick={pair} style={{ flex: 1 }}>Pair Lines</button>
+        <button className="btn" onClick={() => { setInput(''); setResult(''); }}>Clear</button>
+      </div>
+      {result && (
+        <div style={{ marginTop: 14 }}>
+          <div className="result-area" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{result}</div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function ExtractFieldsTool({ onResult }: { onResult: (r: string) => void }) {
   const [input, setInput] = useState('');
   const [delimiter, setDelimiter] = useState('|');
@@ -122,8 +192,9 @@ export default function Tools() {
         { id: 'transform', name: 'Text Transform', icon: 'Aa', description: 'Transform text.', placeholder: 'Enter text...', options: [{ label: 'UPPERCASE', value: 'upper' }, { label: 'lowercase', value: 'lower' }] },
         { id: 'format-json', name: 'JSON Tools', icon: '{ }', description: 'Format JSON.', placeholder: 'Paste JSON...', options: [{ label: 'Prettify', value: 'prettify' }, { label: 'Minify', value: 'minify' }] },
         { id: 'strip-text', name: 'Extract Fields', icon: '|x|', description: 'Split & extract.', placeholder: 'Paste text...', hasDelimiter: true, options: [{ label: 'Split & Extract', value: 'default' }, { label: 'Extract Emails', value: 'emails' }] },
+        { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Group lines by blank lines or consecutive pairs, join with delimiter.', placeholder: 'Paste text...' },
       ]);
-      setActiveTool('transform');
+      setActiveTool('pair-lines');
     };
     fetch('/api/tools', { signal: AbortSignal.timeout(3000) })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
@@ -140,6 +211,7 @@ export default function Tools() {
 
   const tool = tools.find(t => t.id === activeTool) || tools[0];
   const isExtractFields = activeTool === 'strip-text';
+  const isPairLines = activeTool === 'pair-lines';
 
   const runTool = async () => {
     if (!input.trim()) return showToast('Please enter some input', 'error');
@@ -202,6 +274,8 @@ export default function Tools() {
       <div className="card">
         {isExtractFields ? (
           <ExtractFieldsTool onResult={setResult} />
+        ) : isPairLines ? (
+          <PairLinesTool onResult={setResult} />
         ) : (
           <>
             {tool?.options && (
