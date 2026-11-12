@@ -76,7 +76,7 @@ function parseDates(text: string): Date[] {
 function CountdownLine({ target }: { target: Date }) {
   const [, force] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => force(x => x + 1), 1000);
+    const t = setInterval(() => force(x => x + 1), 60000);
     return () => clearInterval(t);
   }, [target]);
 
@@ -84,14 +84,10 @@ function CountdownLine({ target }: { target: Date }) {
   const past = diff < 0;
   const abs = Math.abs(diff);
   const days = Math.floor(abs / 86400000);
-  const hrs = Math.floor((abs % 86400000) / 3600000);
-  const mins = Math.floor((abs % 3600000) / 60000);
-  const secs = Math.floor((abs % 60000) / 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
 
   return (
-    <span style={{ fontFamily: "'SF Mono', monospace", fontVariantNumeric: 'tabular-nums' }}>
-      {past ? '-' : ''}{days}d {pad(hrs)}h {pad(mins)}m {pad(secs)}s
+    <span style={{ fontFamily: "'SF Mono', monospace", fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+      {past ? '-' : ''}{days}d
     </span>
   );
 }
