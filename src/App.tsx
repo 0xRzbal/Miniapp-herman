@@ -115,47 +115,6 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Header with user info */}
-      {user && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '8px 16px',
-          borderBottom: '1px solid var(--border)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon name="settings" size={16} color="var(--text-muted)" />
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user.username}</span>
-            <span style={{
-              fontSize: 10,
-              padding: '2px 6px',
-              borderRadius: 4,
-              background: user.role === 'admin' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(255, 255, 255, 0.06)',
-              color: user.role === 'admin' ? '#22c55e' : 'var(--text-muted)',
-            }}>{user.role}</span>
-          </div>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
-          >Logout</button>
-        </div>
-      )}
-
-      <main className="app-content">
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback />}>
-            <Page />
-          </Suspense>
-        </ErrorBoundary>
-      </main>
-
       <nav className="tab-bar">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -173,6 +132,28 @@ export default function App() {
           );
         })}
       </nav>
+
+      <div className="app-main">
+        {/* Header with user info */}
+        {user && (
+          <div className="app-header">
+            <div className="app-header-left">
+              <Icon name="settings" size={16} color="var(--text-muted)" />
+              <span className="app-header-user">{user.username}</span>
+              <span className="app-header-role">{user.role}</span>
+            </div>
+            <button className="app-header-logout" onClick={handleLogout}>Logout</button>
+          </div>
+        )}
+
+        <main className="app-content">
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <Page />
+            </Suspense>
+          </ErrorBoundary>
+        </main>
+      </div>
 
       {/* Auth Modal */}
       {showAuth && <AuthModal onLogin={handleLogin} />}
