@@ -431,6 +431,78 @@ app.post('/api/settings', (req, res) => {
   }
 });
 
+// ── Notes API ───────────────────────────────────────────────
+const NOTES_FILE = path.join(__dirname, '..', 'data', 'notes.json');
+
+function loadNotes() {
+  try {
+    if (existsSync(NOTES_FILE)) return JSON.parse(readFileSync(NOTES_FILE, 'utf-8'));
+  } catch {}
+  return [];
+}
+
+function saveNotes(notes) {
+  try {
+    const dir = path.dirname(NOTES_FILE);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(NOTES_FILE, JSON.stringify(notes, null, 2));
+    return true;
+  } catch { return false; }
+}
+
+let notes = loadNotes();
+let noteSeq = notes.reduce((m, n) => Math.max(m, parseInt(n.id, 10) || 0), 0);
+
+app.get('/api/notes', (_req, res) => {
+  const sorted = [...notes].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  res.json({ notes: sorted });
+});
+
+app.post('/api/notes', (req, res) => {
+  const { title, content } = req.body || {};
+  if (!validateString(title, 200)) return res.status(400).json({ error: 'title is required (max 200 chars)' });
+  if (!validateString(content)) return res.status(400).json({ error: 'content is required (max 10000 chars)' });
+  noteSeq += 1;
+  const now = new Date().toISOString();
+  const note = { id: String(noteSeq), title: title.trim(), content, createdAt: now, updatedAt: now };
+  notes.push(note);
+  if (saveNotes(notes)) {
+    res.json({ ok: true, note });
+  } else {
+    notes = loadNotes();
+    res.status(500).json({ error: 'Failed to save note' });
+  }
+});
+
+app.put('/api/notes/:id', (req, res) => {
+  const note = notes.find(n => n.id === req.params.id);
+  if (!note) return res.status(404).json({ error: 'Note not found' });
+  const { title, content } = req.body || {};
+  if (title !== undefined && !validateString(title, 200)) return res.status(400).json({ error: 'title too long' });
+  if (content !== undefined && !validateString(content)) return res.status(400).json({ error: 'content too long' });
+  if (title !== undefined) note.title = title.trim();
+  if (content !== undefined) note.content = content;
+  note.updatedAt = new Date().toISOString();
+  if (saveNotes(notes)) {
+    res.json({ ok: true, note });
+  } else {
+    notes = loadNotes();
+    res.status(500).json({ error: 'Failed to save note' });
+  }
+});
+
+app.delete('/api/notes/:id', (req, res) => {
+  const idx = notes.findIndex(n => n.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Note not found' });
+  notes.splice(idx, 1);
+  if (saveNotes(notes)) {
+    res.json({ ok: true });
+  } else {
+    notes = loadNotes();
+    res.status(500).json({ error: 'Failed to delete note' });
+  }
+});
+
 // ── Scheduler API ───────────────────────────────────────────
 import { getSchedules, addSchedule, removeSchedule, toggleSchedule } from './scheduler.js';
 
