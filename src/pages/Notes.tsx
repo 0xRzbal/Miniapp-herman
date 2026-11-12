@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../lib/api';
 import { showToast } from '../components/Toast';
 
@@ -13,9 +13,88 @@ interface Note {
 const fmtTime = (iso: string) => {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
+
+// ── URL auto-linkify ──────────────────────────────────────────
+const URL_RE = /\bhttps?:\/\/[^\s<>"']+[^\s<>"',.;!?)]/;
+const LINK_STYLE = { color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' as const };
+
+function renderText(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  const re = new RegExp(URL_RE.source, 'g');
+  let key = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(<span key={key++}>{text.slice(last, m.index)}</span>);
+    const url = m[0];
+    parts.push(
+      <a key={key++} href={url} target="_blank" rel="noopener noreferrer" style={LINK_STYLE} onClick={e => e.stopPropagation()}>
+        {url}
+      </a>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(<span key={key++}>{text.slice(last)}</span>);
+  return parts;
+}
+
+// ── Date detection for countdown ──────────────────────────────
+const MONTHS: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+function parseDates(text: string): Date[] {
+  const out: Date[] = [];
+  // ISO yyyy-mm-dd
+  const iso = /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = iso.exec(text)) !== null) {
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    if (!isNaN(d.getTime())) out.push(d);
+  }
+  // dd Month yyyy  (12 Nov 2027 / 12 November 2027)
+  const dmy = /\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{4})\b/gi;
+  while ((m = dmy.exec(text)) !== null) {
+    const d = new Date(+m[3], MONTHS[m[2].toLowerCase()], +m[1]);
+    if (!isNaN(d.getTime())) out.push(d);
+  }
+  // dd/mm/yyyy or dd-mm-yyyy
+  const dm = /\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})\b/g;
+  while ((m = dm.exec(text)) !== null) {
+    const d = new Date(+m[3], +m[2] - 1, +m[1]);
+    if (!isNaN(d.getTime())) out.push(d);
+  }
+  // dedupe by epoch ms
+  const seen = new Set<number>();
+  return out.filter(d => { const t = d.getTime(); if (seen.has(t)) return false; seen.add(t); return true; });
+}
+
+function CountdownLine({ target }: { target: Date }) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => force(x => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [target]);
+
+  const diff = target.getTime() - Date.now();
+  const past = diff < 0;
+  const abs = Math.abs(diff);
+  const days = Math.floor(abs / 86400000);
+  const hrs = Math.floor((abs % 86400000) / 3600000);
+  const mins = Math.floor((abs % 3600000) / 60000);
+  const secs = Math.floor((abs % 60000) / 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return (
+    <span style={{ fontFamily: "'SF Mono', monospace", fontVariantNumeric: 'tabular-nums' }}>
+      {past ? '-' : ''}{days}d {pad(hrs)}h {pad(mins)}m {pad(secs)}s
+    </span>
+  );
+}
 
 export default function Notes() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -25,7 +104,7 @@ export default function Notes() {
   const [content, setContent] = useState('');
   const [showNew, setShowNew] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const d = await apiFetch<{ notes: Note[] }>('/api/notes');
       setNotes(d.notes || []);
@@ -34,17 +113,12 @@ export default function Notes() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const startNew = () => {
-    setEditingId(null); setTitle(''); setContent(''); setShowNew(true);
-  };
-
-  const startEdit = (n: Note) => {
-    setEditingId(n.id); setTitle(n.title); setContent(n.content); setShowNew(true);
-  };
+  const startNew = () => { setEditingId(null); setTitle(''); setContent(''); setShowNew(true); };
+  const startEdit = (n: Note) => { setEditingId(n.id); setTitle(n.title); setContent(n.content); setShowNew(true); };
 
   const save = async () => {
     if (!title.trim() && !content.trim()) return showToast('Catatan kosong', 'error');
@@ -81,7 +155,7 @@ export default function Notes() {
       {showNew && (
         <div className="card" style={{ marginBottom: 16 }}>
           <input className="input" placeholder="Judul" value={title} onChange={e => setTitle(e.target.value)} style={{ marginBottom: 10 }} />
-          <textarea className="textarea" placeholder="Isi catatan..." value={content} onChange={e => setContent(e.target.value)} />
+          <textarea className="textarea" placeholder="Isi catatan (link otomatis jadi klik-able, tanggal otomatis dapat countdown)..." value={content} onChange={e => setContent(e.target.value)} />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={save}>{editingId ? 'Simpan' : 'Tambah'}</button>
             <button className="btn" onClick={cancel}>Batal</button>
@@ -96,21 +170,41 @@ export default function Notes() {
           Belum ada catatan
         </div>
       ) : (
-        notes.map(n => (
-          <div key={n.id} className="card" style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {n.title && <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 4, wordBreak: 'break-word' }}>{n.title}</div>}
-                <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{n.content}</div>
+        notes.map(n => {
+          const dates = parseDates(`${n.title}\n${n.content}`);
+          return (
+            <div key={n.id} className="card" style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {n.title && (
+                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6, wordBreak: 'break-word' }}>
+                      {renderText(n.title)}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {renderText(n.content)}
+                  </div>
+                  {dates.length > 0 && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px solid var(--border-subtle)' }}>
+                      {dates.map((d, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>⏳</span>
+                          <span>{fmtTime(d.toISOString())}</span>
+                          <span style={{ color: 'var(--text)' }}><CountdownLine target={d} /></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                  <button className="btn btn-sm btn-ghost" onClick={() => startEdit(n)}>Edit</button>
+                  <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} onClick={() => remove(n.id)}>Hapus</button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                <button className="btn btn-sm btn-ghost" onClick={() => startEdit(n)}>Edit</button>
-                <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} onClick={() => remove(n.id)}>Hapus</button>
-              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>{fmtTime(n.updatedAt)}</div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>{fmtTime(n.updatedAt)}</div>
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );
