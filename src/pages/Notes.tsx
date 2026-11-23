@@ -136,6 +136,8 @@ export default function Notes() {
   const [showNew, setShowNew] = useState(false);
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const toggleExpand = (id: string) => setExpanded(prev => {
     const next = new Set(prev);
@@ -175,11 +177,19 @@ export default function Notes() {
   };
 
   const remove = async (id: string) => {
+    setDeleting(true);
     try {
       await apiFetch(`/api/notes/${id}`, { method: 'DELETE' });
       showToast('Catatan dihapus', 'success');
-      await load();
-    } catch { showToast('Gagal hapus', 'error'); }
+      setExpanded(prev => { const n = new Set(prev); n.delete(id); return n; });
+      setNotes(prev => prev.filter(n => n.id !== id));
+      setConfirmId(null);
+      load().catch(() => {});
+    } catch {
+      showToast('Gagal hapus', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const cancel = () => { setShowNew(false); setEditingId(null); setTitle(''); setContent(''); };
@@ -200,12 +210,19 @@ export default function Notes() {
         {!showNew && <button className="btn btn-sm btn-primary" onClick={startNew}>+ Baru</button>}
       </div>
 
-      {showNew && (
+      {showNew && !editingId && (
         <div className="card" style={{ marginBottom: 16 }}>
+          <div className="note-edit-head">Catatan baru</div>
           <input className="input" placeholder="Judul" value={title} onChange={e => setTitle(e.target.value)} style={{ marginBottom: 10 }} />
-          <textarea className="textarea" placeholder="Isi catatan (link otomatis jadi klik-able, tanggal otomatis dapat countdown)..." value={content} onChange={e => setContent(e.target.value)} />
+          <textarea
+            className="textarea"
+            rows={Math.min(18, Math.max(6, content.split('\n').length + 1))}
+            placeholder="Isi catatan (link otomatis jadi klik-able, tanggal otomatis dapat countdown)..."
+            value={content}
+            onChange={e => setContent(e.target.value)}
+          />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={save}>{editingId ? 'Simpan' : 'Tambah'}</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={save}>Tambah</button>
             <button className="btn" onClick={cancel}>Batal</button>
           </div>
         </div>
@@ -238,6 +255,24 @@ export default function Notes() {
         <div className="note-grid">
           {filtered.map(n => {
             const dates = parseDates(`${n.title}\n${n.content}`);
+            if (editingId === n.id) {
+              return (
+                <div key={n.id} className="card note-edit-card" style={{ marginBottom: 0 }}>
+                  <div className="note-edit-head">Edit catatan</div>
+                  <input className="input" placeholder="Judul" value={title} onChange={e => setTitle(e.target.value)} style={{ marginBottom: 10 }} />
+                  <textarea
+                    className="textarea"
+                    rows={Math.min(20, Math.max(6, content.split('\n').length + 1))}
+                    value={content}
+                    onChange={e => setContent(e.target.value)}
+                  />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={save}>Simpan</button>
+                    <button className="btn" onClick={cancel}>Batal</button>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={n.id} className="card" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
@@ -263,13 +298,31 @@ export default function Notes() {
                   </div>
                   <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                     <button className="btn btn-sm btn-ghost" onClick={() => startEdit(n)}>Edit</button>
-                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} onClick={() => remove(n.id)}>Hapus</button>
+                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} onClick={() => setConfirmId(n.id)}>Hapus</button>
                   </div>
                 </div>
                 <div className="note-meta">{fmtTime(n.updatedAt)}</div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {confirmId && (
+        <div className="confirm-overlay" onClick={() => !deleting && setConfirmId(null)}>
+          <div className="confirm-box" onClick={e => e.stopPropagation()}>
+            <div className="confirm-title">Hapus catatan ini?</div>
+            <div className="confirm-text">
+              {notes.find(n => n.id === confirmId)?.title || 'Catatan tanpa judul'}
+            </div>
+            <div className="confirm-sub">Catatan yang dihapus tidak bisa dikembalikan.</div>
+            <div className="confirm-actions">
+              <button className="btn" style={{ flex: 1 }} onClick={() => setConfirmId(null)} disabled={deleting}>Batal</button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => remove(confirmId)} disabled={deleting}>
+                {deleting ? 'Menghapus...' : 'Hapus'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
