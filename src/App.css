@@ -607,3 +607,40 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   max-width: 62%; text-align: right; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ── Notes category chips ─────────────────────────────────── */
+.cat-bar {
+  display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 0 12px;
+}
+.cat-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 0 11px; height: 30px; border-radius: 999px;
+  background: var(--bg-card); border: 0.5px solid var(--border-subtle);
+  color: var(--text-secondary); font-size: 12px; font-weight: 600; line-height: 1;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.cat-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.cat-chip.active { border-color: rgba(255, 107, 74, 0.55); background: rgba(255, 107, 74, 0.1); color: var(--accent); }
+.cat-chip-count {
+  font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--text-muted); background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px; padding: 2px 6px; min-width: 18px; text-align: center;
+}
+.cat-chip.active .cat-chip-count { color: var(--accent); background: rgba(255, 107, 74, 0.18); }
+
+/* ── Spec table ───────────────────────────────────────────── */
+.spec-card { padding: 4px 16px; }
+.spec-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.spec-table tr + tr th, .spec-table tr + tr td { border-top: 0.5px solid var(--border-subtle); }
+.spec-table th {
+  width: 70px;
+  text-align: left; font-size: 11.5px; font-weight: 500; color: var(--text-muted);
+  padding: 9px 0; letter-spacing: 0.01em; white-space: nowrap;
+}
+.spec-table td {
+  text-align: right; padding: 9px 0 9px 8px;
+  font-family: 'SF Mono', ui-monospace, monospace; font-size: 11.5px; font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

@@ -100,7 +100,8 @@ export default function Home() {
   const memPct = stats ? parseFloat(stats.memory.pct) : 0;
   const diskPct = stats ? parseFloat(stats.disk.pct) : 0;
   const daysLeft = Math.max(0, Math.ceil((VPS_INFO.expiryDate.getTime() - now.getTime()) / 86400000));
-  const cpuModel = stats ? stats.cpu.model.replace(' Processor', '').replace('(with IBPB)', '').replace(/\s+/g, ' ').trim() : '...';
+  const arch = stats?.host ? (stats.host.arch === 'x64' ? 'x86_64' : stats.host.arch) : '';
+  const cpuShort = stats ? stats.cpu.model.replace(' Processor', '').replace(/\(.*?\)/g, '').replace(/\s+/g, ' ').trim() : '';
 
   return (
     <div style={{ animation: 'spring-in 0.4s ease' }}>
@@ -146,6 +147,21 @@ export default function Home() {
         </div>
       </div>
 
+      <div className="section-title">Spesifikasi</div>
+      <div className="card spec-card">
+        <table className="spec-table">
+          <tbody>
+            <tr><th>CPU</th><td title={stats?.cpu.model || ''}>{stats ? `${cpuShort} · ${stats.cpu.cores} vCPU` : '...'}</td></tr>
+            <tr><th>RAM</th><td>{stats ? fmtBytes(stats.memory.total) : '...'}</td></tr>
+            <tr><th>Disk</th><td>{stats ? `${fmtBytes(stats.disk.total)} NVMe` : '...'}</td></tr>
+            <tr><th>OS</th><td>{stats?.host ? stats.host.distro : '...'}</td></tr>
+            <tr><th>Kernel</th><td>{stats?.host ? stats.host.kernel : '...'}</td></tr>
+            <tr><th>Virt</th><td>{stats?.host ? `${stats.host.virt.toUpperCase()} · ${arch}` : '...'}</td></tr>
+            <tr><th>Host</th><td>{stats?.host ? stats.host.hostname : '...'}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <div className="section-title">System</div>
       <div className="card">
         <div className="card-inner" style={{ padding: '16px' }}>
@@ -157,22 +173,6 @@ export default function Home() {
             </>
           ) : <div className="spinner" style={{ margin: '20px auto' }} />}
         </div>
-      </div>
-
-      <div className="section-title">Spesifikasi</div>
-      <div className="card">
-        <div className="list-item">
-          <span className="list-item-label">CPU</span>
-          <span className="list-item-value spec-val" title={stats?.cpu.model || ''}>{cpuModel}</span>
-        </div>
-        <div className="list-item"><span className="list-item-label">vCPU</span><span className="list-item-value">{stats ? `${stats.cpu.cores} cores` : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">RAM</span><span className="list-item-value">{stats ? fmtBytes(stats.memory.total) : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">Disk</span><span className="list-item-value">{stats ? `${fmtBytes(stats.disk.total)} NVMe` : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">OS</span><span className="list-item-value spec-val">{stats?.host ? stats.host.distro : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">Kernel</span><span className="list-item-value spec-val">{stats?.host ? stats.host.kernel : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">Virt</span><span className="list-item-value">{stats?.host ? stats.host.virt.toUpperCase() : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">Host</span><span className="list-item-value spec-val">{stats?.host ? stats.host.hostname : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">Arch</span><span className="list-item-value">{stats?.host ? (stats.host.arch === 'x64' ? 'x86_64' : stats.host.arch) : '...'}</span></div>
       </div>
 
       <div className="section-title">Overview</div>
