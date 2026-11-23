@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { showToast } from '../components/Toast';
 import { SkeletonCard } from '../components/Skeleton';
+import { haptic, bindBackButton } from '../lib/telegram';
 
 interface Note {
   id: string;
@@ -137,6 +138,7 @@ function CountdownLine({ target }: { target: Date }) {
 export default function Notes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -172,8 +174,9 @@ export default function Notes() {
     try {
       const d = await apiFetch<{ notes: Note[] }>('/api/notes');
       setNotes(sortNotes(d.notes || []));
+      setLoadError(false);
     } catch {
-      showToast('Gagal muat catatan', 'error');
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -195,6 +198,7 @@ export default function Notes() {
         showToast('Catatan disimpan', 'success');
       }
       setShowNew(false); setEditingId(null); setTitle(''); setContent('');
+      haptic('success');
       await load();
     } catch { showToast('Gagal simpan', 'error'); }
   };
@@ -207,6 +211,7 @@ export default function Notes() {
       setExpanded(prev => { const n = new Set(prev); n.delete(id); return n; });
       setNotes(prev => prev.filter(n => n.id !== id));
       setConfirmId(null);
+      haptic('success');
       load().catch(() => {});
     } catch {
       showToast('Gagal hapus', 'error');
@@ -222,6 +227,7 @@ export default function Notes() {
     setNotes(prev => sortNotes(prev.map(x => x.id === n.id ? { ...x, pinned: next } : x)));
     try {
       await apiFetch(`/api/notes/${n.id}`, { method: 'PUT', body: JSON.stringify({ pinned: next }) });
+      haptic('light');
       showToast(next ? 'Catatan disematkan' : 'Semat dilepas', 'success');
     } catch {
       setNotes(prev => sortNotes(prev.map(x => x.id === n.id ? { ...x, pinned: !next } : x)));
@@ -242,6 +248,15 @@ export default function Notes() {
   };
 
   const detailNote = detailId ? notes.find(n => n.id === detailId) || null : null;
+
+  useEffect(() => {
+    if (!confirmId && !detailId && !showNew) return;
+    return bindBackButton(() => {
+      if (confirmId) { setConfirmId(null); return; }
+      if (detailId) { setDetailId(null); return; }
+      if (showNew) cancel();
+    });
+  }, [confirmId, detailId, showNew]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -302,7 +317,15 @@ export default function Notes() {
         </div>
       )}
 
-      {loading ? (
+      {loadError && !loading ? (
+        <div className="empty-state">
+          <strong>Gagal memuat catatan</strong>
+          Koneksi ke server bermasalah.
+          <div style={{ marginTop: 14 }}>
+            <button className="btn btn-sm btn-primary" onClick={() => { setLoading(true); load(); }}>Coba lagi</button>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="note-grid">
           {[0, 1, 2, 3].map(i => <SkeletonCard key={i} lines={i % 2 === 0 ? 3 : 2} />)}
         </div>
@@ -339,7 +362,7 @@ export default function Notes() {
                 className="card note-card"
                 role="button"
                 tabIndex={0}
-                onClick={() => setDetailId(n.id)}
+                onClick={() => { haptic('light'); setDetailId(n.id); }}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailId(n.id); } }}
                 style={{ marginBottom: 0 }}
               >

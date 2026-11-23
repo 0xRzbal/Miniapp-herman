@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense, useCallback, useRef } from 'react'
 import { tabs, projects } from './config';
 import type { ProjectConfig } from './config';
 import Icon from './components/Icon';
+import { haptic } from './lib/telegram';
 import type { IconName } from './components/Icon';
 import Toast from './components/Toast';
 import AuthModal from './components/AuthModal';
@@ -81,6 +82,7 @@ export default function App() {
   }, []);
 
   const switchTab = useCallback((id: string) => {
+    haptic('light');
     setActiveTab(id);
     window.history.replaceState(null, '', `#${id}`);
     try { localStorage.setItem('activeTab', id); } catch {}
