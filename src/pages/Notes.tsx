@@ -17,9 +17,45 @@ const fmtTime = (iso: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-// ── URL auto-linkify ──────────────────────────────────────────
+// ── URL auto-linkify (short label, full URL on click) ─────────
 const URL_RE = /\bhttps?:\/\/[^\s<>"']+[^\s<>"',.;!?)]/;
-const LINK_STYLE = { color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' as const };
+
+function shortLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+    const path = u.pathname;
+    if (/(^|\.)docs\.google\.com$/.test(host)) {
+      if (path.includes('/spreadsheets')) return 'spreadsheet';
+      if (path.includes('/document')) return 'document';
+      if (path.includes('/presentation')) return 'slides';
+      if (path.includes('/forms')) return 'form';
+      return 'google-docs';
+    }
+    if (/(^|\.)drive\.google\.com$/.test(host)) return 'drive';
+    if (/(^|\.)script\.google(usercontent)?\.com$/.test(host)) return 'apps-script';
+    if (host === 'raw.githubusercontent.com') {
+      const seg = path.split('/').filter(Boolean);
+      return seg.length >= 2 ? `gh-raw/${seg[1]}` : 'gh-raw';
+    }
+    if (/(^|\.)youtube\.com$/.test(host) || host === 'youtu.be') return 'youtube';
+    if (host === 'github.com') {
+      const seg = path.split('/').filter(Boolean);
+      if (seg.length >= 2) return `github/${seg[0]}/${seg[1]}`;
+      return seg[0] ? `github/${seg[0]}` : 'github';
+    }
+    if (host === 'x.com' || host === 'twitter.com') {
+      const seg = path.split('/').filter(Boolean);
+      return seg[0] ? `x/${seg[0]}` : 'x';
+    }
+    const seg = path.split('/').filter(Boolean)[0];
+    let label = seg ? `${host}/${seg}` : host;
+    if (label.length > 30) label = label.slice(0, 29) + '…';
+    return label;
+  } catch {
+    return url.length > 30 ? url.slice(0, 29) + '…' : url;
+  }
+}
 
 function renderText(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -30,9 +66,18 @@ function renderText(text: string): React.ReactNode[] {
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(<span key={key++}>{text.slice(last, m.index)}</span>);
     const url = m[0];
+    const label = shortLabel(url);
     parts.push(
-      <a key={key++} href={url} target="_blank" rel="noopener noreferrer" style={LINK_STYLE} onClick={e => e.stopPropagation()}>
-        {url}
+      <a
+        key={key++}
+        className="note-link"
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={url}
+        onClick={e => e.stopPropagation()}
+      >
+        {label}
       </a>,
     );
     last = m.index + m[0].length;
@@ -90,6 +135,13 @@ export default function Notes() {
   const [content, setContent] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [query, setQuery] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => setExpanded(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const load = useCallback(async () => {
     try {
@@ -191,7 +243,12 @@ export default function Notes() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {n.title && <div className="note-title">{renderText(n.title)}</div>}
-                    <div className="note-body">{renderText(n.content)}</div>
+                    <div className={`note-body${expanded.has(n.id) ? '' : ' note-body-clamp'}`}>{renderText(n.content)}</div>
+                    {n.content.length > 220 && (
+                      <button className="note-more" onClick={() => toggleExpand(n.id)}>
+                        {expanded.has(n.id) ? 'Ringkas ▲' : 'Selengkapnya ▼'}
+                      </button>
+                    )}
                     {dates.length > 0 && (
                       <div className="note-dates">
                         {dates.map((d, i) => (
