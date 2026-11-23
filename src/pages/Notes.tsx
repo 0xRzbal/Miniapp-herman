@@ -194,6 +194,18 @@ export default function Notes() {
 
   const cancel = () => { setShowNew(false); setEditingId(null); setTitle(''); setContent(''); };
 
+  const exportNotes = () => {
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), count: notes.length, notes }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rzbal-notes-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return notes;
@@ -207,7 +219,10 @@ export default function Notes() {
           Catatan
           <span className="notes-count">{notes.length}</span>
         </div>
-        {!showNew && <button className="btn btn-sm btn-primary" onClick={startNew}>+ Baru</button>}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {notes.length > 0 && <button className="btn btn-sm" onClick={exportNotes}>Export</button>}
+          {!showNew && <button className="btn btn-sm btn-primary" onClick={startNew}>+ Baru</button>}
+        </div>
       </div>
 
       {showNew && !editingId && (

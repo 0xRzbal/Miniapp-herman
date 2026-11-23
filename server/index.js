@@ -20,7 +20,8 @@ const JOEMAIL_URL = process.env.JOEMAIL_URL || 'http://localhost:8880';
 // ── Rate Limiting ───────────────────────────────────────────
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 800, // miniapp polls health/system + notes CRUD; 100 starved the UI
+  skip: (req) => req.path === '/api/health' || req.path === '/api/system',
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
