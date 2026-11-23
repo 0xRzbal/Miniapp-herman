@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense, useCallback } from 'react';
+import { useState, useEffect, lazy, Suspense, useCallback, useRef } from 'react';
 import { tabs, projects } from './config';
 import type { ProjectConfig } from './config';
 import Icon from './components/Icon';
@@ -112,6 +112,43 @@ export default function App() {
   }, [switchTab]);
 
   const Page = pageMap[activeTab] || Home;
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollMemory = useRef<Record<string, number>>({});
+  const prevTab = useRef(activeTab);
+
+  // remember per-tab scroll position so switching tabs feels native
+  const activeTabRef = useRef(activeTab);
+  const restoring = useRef(false);
+  activeTabRef.current = activeTab;
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (restoring.current) return;
+      scrollMemory.current[activeTabRef.current] = el.scrollTop;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (prevTab.current === activeTab || !el) return;
+    const target = scrollMemory.current[activeTab] ?? 0;
+    prevTab.current = activeTab;
+    if (!target) { el.scrollTop = 0; return; }
+    // content mounts (and fetches) lazily: keep re-applying until the page is tall enough
+    restoring.current = true;
+    let tries = 0;
+    const restore = () => {
+      el.scrollTop = target;
+      const done = Math.abs(el.scrollTop - target) <= 2 || tries++ > 20;
+      if (done) { restoring.current = false; return; }
+      setTimeout(restore, 60);
+    };
+    requestAnimationFrame(restore);
+  }, [activeTab]);
 
   return (
     <div className="app">
@@ -129,6 +166,8 @@ export default function App() {
             <button
               key={tab.id}
               className={`tab-item ${isActive ? 'active' : ''}`}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={tab.label}
               onClick={() => switchTab(tab.id)}
             >
               <span className="tab-icon">
@@ -153,10 +192,12 @@ export default function App() {
           </div>
         )}
 
-        <main className="app-content">
+        <main className="app-content" ref={scrollRef}>
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback />}>
-              <Page />
+              <div key={activeTab} className="page-transition">
+                <Page />
+              </div>
             </Suspense>
           </ErrorBoundary>
         </main>

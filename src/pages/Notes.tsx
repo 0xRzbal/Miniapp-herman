@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { showToast } from '../components/Toast';
+import { SkeletonCard } from '../components/Skeleton';
 
 interface Note {
   id: string;
@@ -137,6 +138,21 @@ export default function Notes() {
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+
+  // press "/" to jump into search
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === 'Escape') setConfirmId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const [deleting, setDeleting] = useState(false);
 
   const toggleExpand = (id: string) => setExpanded(prev => {
@@ -251,16 +267,24 @@ export default function Notes() {
             </svg>
           </span>
           <input
+            ref={searchRef}
             className="search-input"
             placeholder="Cari catatan..."
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
+          {query && (
+            <button className="search-clear" aria-label="Hapus pencarian" onClick={() => { setQuery(''); searchRef.current?.focus(); }}>
+              ×
+            </button>
+          )}
         </div>
       )}
 
       {loading ? (
-        <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div>
+        <div className="note-grid">
+          {[0, 1, 2, 3].map(i => <SkeletonCard key={i} lines={i % 2 === 0 ? 3 : 2} />)}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">
           <strong>{notes.length === 0 ? 'Belum ada catatan' : 'Tidak ada hasil'}</strong>
@@ -312,8 +336,8 @@ export default function Notes() {
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                    <button className="btn btn-sm btn-ghost" onClick={() => startEdit(n)}>Edit</button>
-                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} onClick={() => setConfirmId(n.id)}>Hapus</button>
+                    <button className="btn btn-sm btn-ghost" aria-label={`Edit ${n.title || 'catatan'}`} onClick={() => startEdit(n)}>Edit</button>
+                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} aria-label={`Hapus ${n.title || 'catatan'}`} onClick={() => setConfirmId(n.id)}>Hapus</button>
                   </div>
                 </div>
                 <div className="note-meta">{fmtTime(n.updatedAt)}</div>

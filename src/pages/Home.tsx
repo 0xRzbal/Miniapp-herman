@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { APP_NAME } from '../config';
+import { SkeletonStats } from '../components/Skeleton';
 
 interface SystemStats {
   cpu: { cores: number; usage: string; model: string };
@@ -50,7 +51,16 @@ export default function Home() {
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
 
-  if (!ready) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh' }}><div className="spinner" /></div>;
+  if (!ready) {
+    return (
+      <div style={{ animation: 'fade-in 0.25s ease' }}>
+        <div className="section-title">System</div>
+        <SkeletonStats rows={3} />
+        <div className="section-title">Services</div>
+        <SkeletonStats rows={2} />
+      </div>
+    );
+  }
 
   const hours = now.getHours();
   const greeting = hours < 12 ? 'Good morning' : hours < 18 ? 'Good afternoon' : 'Good evening';
