@@ -544,3 +544,36 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Service rows */
 .status-dot.offline { background: #6b6b70; box-shadow: none; }
+
+/* ── Search highlight ─────────────────────────────────────── */
+.hl { background: rgba(255, 107, 74, 0.24); color: var(--text); border-radius: 3px; padding: 0 2px; }
+
+/* ── Tools grid ───────────────────────────────────────────── */
+.tools-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 4px; }
+.tool-tile {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--bg-card); border: 1px solid var(--border-subtle);
+  color: var(--text); transition: border-color 0.16s ease, background 0.16s ease;
+}
+.tool-tile:hover { border-color: var(--border-strong); }
+.tool-tile.active { border-color: rgba(255, 107, 74, 0.55); background: rgba(255, 107, 74, 0.07); }
+.tool-tile-icon {
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; font-weight: 800;
+  color: var(--text-muted); min-width: 28px; text-align: center;
+}
+.tool-tile.active .tool-tile-icon { color: var(--accent); }
+.tool-tile-text { display: flex; flex-direction: column; min-width: 0; }
+.tool-tile-name { font-size: 14.5px; font-weight: 600; }
+.tool-tile.active .tool-tile-name { color: var(--text); }
+.tool-tile-desc {
+  font-size: 11.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.45;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+@media (min-width: 900px) {
+  .tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+@media (min-width: 1400px) {
+  .tools-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

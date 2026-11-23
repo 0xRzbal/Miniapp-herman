@@ -183,6 +183,7 @@ export default function Tools() {
   const [activeTool, setActiveTool] = useState('');
   const [input, setInput] = useState('');
   const [option, setOption] = useState('');
+  const [toolQuery, setToolQuery] = useState('');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
   const mergedRef = useRef(false);
@@ -219,28 +220,49 @@ export default function Tools() {
   return (
     <div>
       {/* Tool selector */}
-      <div className="card" style={{ padding: 0 }}>
-        {tools.map((t, i) => (
-          <button key={t.id}
-            style={{
-              width: '100%', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
-              borderBottom: i < tools.length - 1 ? '0.5px solid var(--border-subtle)' : 'none',
-              color: 'var(--text)', padding: '12px 16px',
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}
-            onClick={() => { setActiveTool(t.id); setResult(''); setInput(''); setOption(''); }}>
-            <span style={{
-              fontSize: 13, fontWeight: 800, fontFamily: "'SF Mono', 'Fira Code', monospace",
-              color: activeTool === t.id ? 'var(--accent)' : 'var(--text-muted)', minWidth: 28, textAlign: 'center',
-            }}>{t.icon}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 500, color: activeTool === t.id ? 'var(--text)' : 'var(--text-muted)' }}>{t.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{t.description}</div>
-            </div>
-            {activeTool === t.id && <span className="badge ok">Active</span>}
-          </button>
-        ))}
+      {tools.length > 4 && (
+        <div className="search-wrap" style={{ marginBottom: 12 }}>
+          <span className="search-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+            </svg>
+          </span>
+          <input
+            className="search-input"
+            placeholder="Cari tool..."
+            value={toolQuery}
+            onChange={e => setToolQuery(e.target.value)}
+          />
+          {toolQuery && (
+            <button className="search-clear" aria-label="Hapus pencarian" onClick={() => setToolQuery('')}>×</button>
+          )}
+        </div>
+      )}
+
+      <div className="tools-grid">
+        {tools
+          .filter(t => !toolQuery.trim() || `${t.name} ${t.description}`.toLowerCase().includes(toolQuery.trim().toLowerCase()))
+          .map(t => (
+            <button
+              key={t.id}
+              className={`tool-tile${activeTool === t.id ? ' active' : ''}`}
+              onClick={() => { setActiveTool(t.id); setResult(''); setInput(''); setOption(''); }}
+            >
+              <span className="tool-tile-icon">{t.icon}</span>
+              <span className="tool-tile-text">
+                <span className="tool-tile-name">{t.name}</span>
+                <span className="tool-tile-desc">{t.description}</span>
+              </span>
+            </button>
+          ))}
       </div>
+
+      {toolQuery.trim() && tools.filter(t => `${t.name} ${t.description}`.toLowerCase().includes(toolQuery.trim().toLowerCase())).length === 0 && (
+        <div className="empty-state" style={{ padding: '24px 16px' }}>
+          <strong>Tidak ada tool cocok</strong>
+          Coba kata kunci lain.
+        </div>
+      )}
 
       <div className="section-title">{tool?.name || 'Input'}</div>
       <div className="card">

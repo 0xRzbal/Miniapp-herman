@@ -65,19 +65,38 @@ function shortLabel(url: string): string {
   }
 }
 
-function renderText(text: string): React.ReactNode[] {
+function highlight(text: string, q: string, keyBase: number): React.ReactNode[] {
+  if (!q) return [<span key={keyBase}>{text}</span>];
+  const out: React.ReactNode[] = [];
+  const lower = text.toLowerCase();
+  const needle = q.toLowerCase();
+  let i = 0;
+  let k = 0;
+  while (true) {
+    const at = lower.indexOf(needle, i);
+    if (at === -1) break;
+    if (at > i) out.push(<span key={`${keyBase}-${k++}`}>{text.slice(i, at)}</span>);
+    out.push(<mark key={`${keyBase}-${k++}`} className="hl">{text.slice(at, at + needle.length)}</mark>);
+    i = at + needle.length;
+  }
+  if (i < text.length) out.push(<span key={`${keyBase}-${k++}`}>{text.slice(i)}</span>);
+  return out;
+}
+
+function renderText(text: string, query = ''): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
   const re = new RegExp(URL_RE.source, 'g');
   let key = 0;
+  const q = query.trim();
   while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push(<span key={key++}>{text.slice(last, m.index)}</span>);
+    if (m.index > last) parts.push(...highlight(text.slice(last, m.index), q, key++));
     const url = m[0];
     const label = shortLabel(url);
     parts.push(
       <a
-        key={key++}
+        key={`l${key++}`}
         className="note-link"
         href={url}
         target="_blank"
@@ -85,12 +104,14 @@ function renderText(text: string): React.ReactNode[] {
         title={url}
         onClick={e => e.stopPropagation()}
       >
-        {label}
+        {q && label.toLowerCase().includes(q.toLowerCase())
+          ? <mark className="hl">{label}</mark>
+          : label}
       </a>,
     );
     last = m.index + m[0].length;
   }
-  if (last < text.length) parts.push(<span key={key++}>{text.slice(last)}</span>);
+  if (last < text.length) parts.push(...highlight(text.slice(last), q, key++));
   return parts;
 }
 
@@ -371,10 +392,10 @@ export default function Notes() {
                     {n.title && (
                       <div className="note-title">
                         {n.pinned && <span className="note-pin-mark" title="Disematkan">●</span>}
-                        {renderText(n.title)}
+                        {renderText(n.title, query)}
                       </div>
                     )}
-                    <div className={`note-body${expanded.has(n.id) ? '' : ' note-body-clamp'}`}>{renderText(n.content)}</div>
+                    <div className={`note-body${expanded.has(n.id) ? '' : ' note-body-clamp'}`}>{renderText(n.content, query)}</div>
                     {n.content.length > 220 && (
                       <button
                         className="note-more"
@@ -415,7 +436,7 @@ export default function Notes() {
               </div>
               <button className="note-sheet-close" aria-label="Tutup" onClick={() => setDetailId(null)}>×</button>
             </div>
-            <div className="note-sheet-body">{renderText(detailNote.content)}</div>
+            <div className="note-sheet-body">{renderText(detailNote.content, query)}</div>
             {parseDates(`${detailNote.title}
 ${detailNote.content}`).map((d, i) => (
               <div key={i} className="note-date-row" style={{ marginTop: 8 }}>
