@@ -41,6 +41,7 @@ const staticTabs: Tab[] = [
   { id: 'mail', label: 'Mail', icon: 'mail', type: 'page' },
   { id: 'tools', label: 'Tools', icon: 'tools', type: 'page' },
   { id: 'notes', label: 'Notes', icon: 'doc', type: 'page' },
+  { id: 'ot', label: 'Secret', icon: 'utility', type: 'page' },
 ];
 
 // Project tabs

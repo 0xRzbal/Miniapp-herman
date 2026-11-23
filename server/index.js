@@ -3,11 +3,12 @@ import cors from 'cors';
 import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import os from 'os';
 import { execSync } from 'child_process';
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -714,6 +715,49 @@ app.use('/mail', (req, res, next) => {
   if (bypass === AUTH_BYPASS_TOKEN) return next();
   return res.status(403).send('Access restricted to Telegram Mini App');
 }, mailProxy);
+
+// ── Burn-after-read links ───────────────────────────────────
+const OT_DIR = path.join(__dirname, '..', 'data', 'ot');
+const otLimiter = rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+
+function otPath(token) {
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token || '')) return null;
+  return path.join(OT_DIR, token);
+}
+
+// Create a one-time link (public, rate-limited; content is the secret, not the creator)
+app.post('/api/ot/create', otLimiter, (req, res) => {
+  const text = req.body && typeof req.body.text === 'string' ? req.body.text : '';
+  if (!text || text.length > 100000) {
+    return res.status(400).json({ error: 'text required (max 100000 chars)' });
+  }
+  try {
+    if (!existsSync(OT_DIR)) mkdirSync(OT_DIR, { recursive: true });
+    const token = crypto.randomBytes(24).toString('base64url');
+    writeFileSync(path.join(OT_DIR, token), text, 'utf8');
+    res.json({ token, url: `/ot/${token}`, base: '/ot/' });
+  } catch (e) {
+    res.status(500).json({ error: 'failed to create link' });
+  }
+});
+
+// Serve a one-time link exactly once, then delete it.
+// Public route: placed BEFORE Express static (which would otherwise catch it).
+app.get('/ot/:token', (req, res) => {
+  const file = otPath(req.params.token);
+  if (!file) return res.status(404).end();
+  let body;
+  try {
+    if (!existsSync(file)) return res.status(410).send('Gone - secret already consumed');
+    body = readFileSync(file, 'utf8');
+    try { unlinkSync(file); } catch {}
+  } catch (e) {
+    return res.status(500).end();
+  }
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(body);
+});
 
 // Static Files
 app.use(express.static(path.join(__dirname, '..', 'dist'), {
