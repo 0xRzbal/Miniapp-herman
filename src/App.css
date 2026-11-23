@@ -254,9 +254,10 @@
   font-size: 13px; color: var(--text-secondary); line-height: 1.6;
   white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
 }
-.note-body-clamp {
-  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical;
-  overflow: hidden;
+.note-body-anim { overflow: hidden; }
+.note-body.is-clamped {
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 84%, rgba(0, 0, 0, 0.08) 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 84%, rgba(0, 0, 0, 0.08) 100%);
 }
 .note-link {
   display: inline-block; max-width: 100%;
@@ -577,3 +578,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 @media (min-width: 1400px) {
   .tools-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ── Access Control (merged from Settings) ────────────────── */
+.ac-card { padding: 0; overflow: hidden; }
+.ac-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 13px 16px; min-height: 52px;
+}
+.ac-row + .ac-row { border-top: 0.5px solid var(--border-subtle); }
+.ac-row-last { border-bottom: 0; }
+.ac-text { min-width: 0; }
+.ac-label { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.ac-desc {
+  font-size: 11.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ver-chip {
+  font-family: 'SF Mono', ui-monospace, monospace; font-size: 11.5px;
+  color: var(--text-muted); background: var(--bg-input);
+  border: 0.5px solid var(--border-subtle); border-radius: 999px;
+  padding: 4px 10px; white-space: nowrap; flex-shrink: 0;
+}
+.ac-row .toggle { flex-shrink: 0; }

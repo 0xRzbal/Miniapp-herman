@@ -168,6 +168,7 @@ export default function Notes() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const bodyRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
 
   // press "/" to jump into search
@@ -185,11 +186,30 @@ export default function Notes() {
   }, []);
   const [deleting, setDeleting] = useState(false);
 
-  const toggleExpand = (id: string) => setExpanded(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
+  const CLAMP_H = 125;
+
+  const toggleExpand = (id: string) => {
+    const el = bodyRefs.current[id];
+    const isOpen = expanded.has(id);
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    if (!el) return;
+    const from = Math.round(el.getBoundingClientRect().height);
+    el.style.maxHeight = from + 'px';
+    requestAnimationFrame(() => {
+      const to = isOpen ? CLAMP_H : el.scrollHeight;
+      const anim = el.animate(
+        [{ maxHeight: `${from}px` }, { maxHeight: `${to}px` }],
+        { duration: 240, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+      );
+      const settle = () => { el.style.maxHeight = isOpen ? `${CLAMP_H}px` : 'none'; };
+      anim.onfinish = settle;
+      anim.oncancel = settle;
+    });
+  };
 
   const load = useCallback(async () => {
     try {
@@ -395,7 +415,13 @@ export default function Notes() {
                         {renderText(n.title, query)}
                       </div>
                     )}
-                    <div className={`note-body${expanded.has(n.id) ? '' : ' note-body-clamp'}`}>{renderText(n.content, query)}</div>
+                    <div
+                      ref={el => {
+                        bodyRefs.current[n.id] = el;
+                        if (el && !el.style.maxHeight) el.style.maxHeight = expanded.has(n.id) ? 'none' : `${CLAMP_H}px`;
+                      }}
+                      className={`note-body note-body-anim${expanded.has(n.id) ? '' : ' is-clamped'}`}
+                    >{renderText(n.content, query)}</div>
                     {n.content.length > 220 && (
                       <button
                         className="note-more"

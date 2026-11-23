@@ -165,16 +165,16 @@ export default function Home() {
       </div>
 
       <div className="section-title">Access Control</div>
-      <div className="card">
+      <div className="card ac-card">
         {([
           { key: 'hub' as const, label: 'Full Access', desc: 'Block external browser access' },
           { key: 'mail' as const, label: 'Mail', desc: 'Block JoeMail external access' },
           { key: 'router' as const, label: '9Router', desc: 'Block 9Router external access' },
         ]).map(svc => (
-          <div key={svc.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', borderBottom: '0.5px solid var(--border-subtle)', gap: 12 }}>
-            <div style={{ minWidth: 0 }}>
-              <div className="list-item-label" style={{ fontSize: 13, textTransform: 'none', letterSpacing: 0 }}>{svc.label}</div>
-              <div className="list-item-desc">{svc.desc}</div>
+          <div key={svc.key} className="ac-row">
+            <div className="ac-text">
+              <div className="ac-label">{svc.label}</div>
+              <div className="ac-desc">{svc.desc}</div>
             </div>
             <button
               className={`toggle ${access[svc.key] ? 'active' : ''}`}
@@ -184,7 +184,13 @@ export default function Home() {
             />
           </div>
         ))}
-        <div className="list-item"><span className="list-item-label">Version</span><span className="list-item-value">{APP_NAME} {APP_VERSION}</span></div>
+        <div className="ac-row ac-row-last">
+          <div className="ac-text">
+            <div className="ac-label">Version</div>
+            <div className="ac-desc">{APP_NAME}</div>
+          </div>
+          <span className="ver-chip">v{APP_VERSION}</span>
+        </div>
       </div>
     </div>
   );
