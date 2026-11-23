@@ -656,6 +656,29 @@ function readServices() {
   return data;
 }
 
+// ── Metrics history (10 min, 15s resolution) ────────────────
+const HISTORY = [];
+const HISTORY_MAX = 60;   // 60 pts × 10s = 10 min
+let lastCpuTicks = null;
+
+function sampleMetrics() {
+  const cpus = os.cpus();
+  let idle = 0, total = 0;
+  for (const c of cpus) { for (const k in c.times) total += c.times[k]; idle += c.times.idle; }
+  let cpu = 0;
+  if (lastCpuTicks) {
+    const dTotal = total - lastCpuTicks.total;
+    const dIdle = idle - lastCpuTicks.idle;
+    cpu = dTotal > 0 ? (1 - dIdle / dTotal) * 100 : 0;
+  }
+  lastCpuTicks = { total, idle };
+  const mem = (1 - os.freemem() / os.totalmem()) * 100;
+  HISTORY.push({ t: Date.now(), cpu: +cpu.toFixed(1), mem: +mem.toFixed(1) });
+  if (HISTORY.length > HISTORY_MAX) HISTORY.shift();
+}
+sampleMetrics();
+setInterval(sampleMetrics, 10000).unref();
+
 app.get('/api/system', (_req, res) => {
   const cpus = os.cpus();
   const totalMem = os.totalmem();
@@ -677,6 +700,7 @@ app.get('/api/system', (_req, res) => {
     memory: { total: totalMem, used: usedMem, free: freeMem, pct: ((usedMem / totalMem) * 100).toFixed(1) },
     disk, uptime: process.uptime(), hostname: os.hostname(),
     services: readServices(),
+    history: HISTORY,
   });
 });
 

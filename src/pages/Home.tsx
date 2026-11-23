@@ -5,12 +5,15 @@ import { apiFetch } from '../lib/api';
 
 interface MiniappOnly { hub: boolean; mail: boolean; router: boolean; }
 
+interface MetricPoint { t: number; cpu: number; mem: number; }
+
 interface SystemStats {
   cpu: { cores: number; usage: string; model: string };
   memory: { total: number; used: number; free: number; pct: string };
   disk: { total: number; used: number; available: number; pct: string };
   uptime: number;
   hostname: string;
+  history?: MetricPoint[];
 }
 
 const VPS_INFO = {
@@ -20,6 +23,39 @@ const VPS_INFO = {
 
 const fmtBytes = (b: number) => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : b >= 1048576 ? (b / 1048576).toFixed(0) + ' MB' : (b / 1024).toFixed(0) + ' KB';
 const fmtUptime = (s: number) => { const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`; };
+
+function Spark({ points, color, label }: { points: MetricPoint[]; color: string; label: string }) {
+  const W = 300, H = 46;
+  const vals = points.map(p => (label === 'CPU' ? p.cpu : p.mem));
+  if (vals.length < 2) {
+    return (
+      <div className="spark-wrap">
+        <div className="spark-head"><span className="spark-label">{label}</span><span className="spark-val">collecting…</span></div>
+        <div className="spark-empty" />
+      </div>
+    );
+  }
+  const pts = vals.map((v, i) => [(i / (vals.length - 1)) * W, H - Math.min(Math.max(v, 0), 100) / 100 * (H - 6) - 3]);
+  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const area = `${line} L${W},${H} L0,${H} Z`;
+  const last = vals[vals.length - 1];
+  const peak = Math.max(...vals);
+  return (
+    <div className="spark-wrap">
+      <div className="spark-head">
+        <span className="spark-label">{label}</span>
+        <span className="spark-val" style={{ color }}>
+          {last.toFixed(0)}<span className="spark-unit">%</span>
+          <span className="spark-peak">max {peak.toFixed(0)}%</span>
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="spark" aria-label={`${label} 10 minute trend`}>
+        <path d={area} fill={color} opacity="0.13" />
+        <path d={line} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+    </div>
+  );
+}
 
 function StatBar({ label, value, pct, color }: { label: string; value: string; pct: number; color: string }) {
   return (
@@ -87,7 +123,15 @@ export default function Home() {
       <div style={{ animation: 'fade-in 0.25s ease' }}>
         <div className="section-title">System</div>
         <SkeletonStats rows={3} />
-        <div className="section-title">Overview</div>
+        <div className="section-title">Trend · 10 min</div>
+      <div className="card">
+        <div className="card-inner" style={{ padding: '14px 16px 10px' }}>
+          <Spark points={stats?.history || []} color="#ff6b4a" label="CPU" />
+          <Spark points={stats?.history || []} color="#a855f7" label="MEM" />
+        </div>
+      </div>
+
+      <div className="section-title">Overview</div>
         <SkeletonStats rows={2} />
       </div>
     );
@@ -154,6 +198,14 @@ export default function Home() {
               <StatBar label="Disk" value={`${fmtBytes(stats.disk.used)} / ${fmtBytes(stats.disk.total)}`} pct={diskPct} color="#f59e0b" />
             </>
           ) : <div className="spinner" style={{ margin: '20px auto' }} />}
+        </div>
+      </div>
+
+      <div className="section-title">Trend · 10 min</div>
+      <div className="card">
+        <div className="card-inner" style={{ padding: '14px 16px 10px' }}>
+          <Spark points={stats?.history || []} color="#ff6b4a" label="CPU" />
+          <Spark points={stats?.history || []} color="#a855f7" label="MEM" />
         </div>
       </div>
 

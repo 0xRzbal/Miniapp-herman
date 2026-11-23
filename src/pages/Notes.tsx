@@ -156,6 +156,22 @@ function CountdownLine({ target }: { target: Date }) {
   return <span className="note-date-val">{past ? '-' : ''}{days}d</span>;
 }
 
+type CatId = 'all' | 'project' | 'bounty' | 'farm' | 'infra' | 'other';
+
+const CAT_MATCHERS: { id: Exclude<CatId, 'all' | 'other'>; label: string; re: RegExp }[] = [
+  { id: 'project', label: 'Project', re: /^\s*project\s*:/i },
+  { id: 'bounty', label: 'Bounty', re: /bounty|vulnerab|exploit|pentest|hunting|bug\s?hunt|poc\b/i },
+  { id: 'farm', label: 'Farm', re: /farm|airdrop|mining|mint|claim|regist|account|account\b/i },
+  { id: 'infra', label: 'Infra', re: /vps|nginx|docker|systemd|cron|domain|dns|server|ssl|port\b/i },
+];
+
+function catOf(note: { title: string; content: string }): CatId {
+  const hay = `${note.title}\n${note.content}`;
+  for (const m of CAT_MATCHERS.slice(1)) if (m.re.test(hay)) return m.id;
+  if (CAT_MATCHERS[0].re.test(note.title)) return 'project';
+  return 'other';
+}
+
 export default function Notes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,6 +181,7 @@ export default function Notes() {
   const [content, setContent] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [query, setQuery] = useState('');
+  const [cat, setCat] = useState<CatId>('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -299,11 +316,20 @@ export default function Notes() {
     });
   }, [confirmId, detailId, showNew]);
 
+  const catCounts = useMemo(() => {
+    const c: Record<string, number> = { all: notes.length, project: 0, bounty: 0, farm: 0, infra: 0, other: 0 };
+    for (const n of notes) c[catOf(n)] = (c[catOf(n)] || 0) + 1;
+    return c;
+  }, [notes]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter(n => `${n.title}\n${n.content}`.toLowerCase().includes(q));
-  }, [notes, query]);
+    return notes.filter(n => {
+      if (cat !== 'all' && catOf(n) !== cat) return false;
+      if (!q) return true;
+      return `${n.title}\n${n.content}`.toLowerCase().includes(q);
+    });
+  }, [notes, query, cat]);
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease' }}>
@@ -358,6 +384,28 @@ export default function Notes() {
         </div>
       )}
 
+      {!loading && notes.length > 0 && (
+        <div className="cat-bar" role="tablist" aria-label="Kategori catatan">
+          {(['all', 'project', 'bounty', 'farm', 'infra', 'other'] as CatId[]).map(id => {
+            const label = id === 'all' ? 'Semua' : id === 'other' ? 'Lainnya' : CAT_MATCHERS.find(m => m.id === id)!.label;
+            const count = catCounts[id] || 0;
+            if (id !== 'all' && count === 0) return null;
+            return (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={cat === id}
+                className={`cat-chip${cat === id ? ' active' : ''}`}
+                onClick={() => setCat(id)}
+              >
+                {label}
+                <span className="cat-chip-count">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loadError && !loading ? (
         <div className="empty-state">
           <strong>Gagal memuat catatan</strong>
@@ -373,6 +421,7 @@ export default function Notes() {
       ) : filtered.length === 0 ? (
         <div className="empty-state">
           <strong>{notes.length === 0 ? 'Belum ada catatan' : 'Tidak ada hasil'}</strong>
+          {notes.length > 0 && cat !== 'all' && <div style={{ marginTop: 10 }}><button className="btn btn-sm" onClick={() => setCat('all')}>Reset kategori</button></div>}
           {notes.length === 0 ? 'Tekan "+ Baru" untuk mulai mencatat.' : `Tidak ada catatan yang cocok dengan "${query}".`}
         </div>
       ) : (
