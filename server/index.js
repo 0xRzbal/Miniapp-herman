@@ -656,28 +656,20 @@ function readServices() {
   return data;
 }
 
-// ── Metrics history (10 min, 15s resolution) ────────────────
-const HISTORY = [];
-const HISTORY_MAX = 60;   // 60 pts × 10s = 10 min
-let lastCpuTicks = null;
-
-function sampleMetrics() {
-  const cpus = os.cpus();
-  let idle = 0, total = 0;
-  for (const c of cpus) { for (const k in c.times) total += c.times[k]; idle += c.times.idle; }
-  let cpu = 0;
-  if (lastCpuTicks) {
-    const dTotal = total - lastCpuTicks.total;
-    const dIdle = idle - lastCpuTicks.idle;
-    cpu = dTotal > 0 ? (1 - dIdle / dTotal) * 100 : 0;
-  }
-  lastCpuTicks = { total, idle };
-  const mem = (1 - os.freemem() / os.totalmem()) * 100;
-  HISTORY.push({ t: Date.now(), cpu: +cpu.toFixed(1), mem: +mem.toFixed(1) });
-  if (HISTORY.length > HISTORY_MAX) HISTORY.shift();
+let HOST_INFO = null;
+function readHostInfo() {
+  if (HOST_INFO) return HOST_INFO;
+  let distro = 'Linux', kernel = os.release(), arch = os.arch(), virt = '';
+  try {
+    const rel = readFileSync('/etc/os-release', 'utf-8');
+    const m = rel.match(/^PRETTY_NAME="?([^"\n]+)"?/m);
+    if (m) distro = m[1];
+  } catch {}
+  try { virt = execSync('systemd-detect-virt', { encoding: 'utf-8' }).trim(); } catch {}
+  if (virt === 'none') virt = 'bare-metal';
+  HOST_INFO = { distro, kernel, arch, virt, hostname: os.hostname() };
+  return HOST_INFO;
 }
-sampleMetrics();
-setInterval(sampleMetrics, 10000).unref();
 
 app.get('/api/system', (_req, res) => {
   const cpus = os.cpus();
@@ -700,7 +692,7 @@ app.get('/api/system', (_req, res) => {
     memory: { total: totalMem, used: usedMem, free: freeMem, pct: ((usedMem / totalMem) * 100).toFixed(1) },
     disk, uptime: process.uptime(), hostname: os.hostname(),
     services: readServices(),
-    history: HISTORY,
+    host: readHostInfo(),
   });
 });
 
