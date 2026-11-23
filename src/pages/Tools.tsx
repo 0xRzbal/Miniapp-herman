@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { showToast } from '../components/Toast';
+import SecretLinkTool from './OTPage';
 
 interface ToolOption { label: string; value: string; }
 interface Tool { id: string; name: string; icon: string; description: string; placeholder: string; options?: ToolOption[]; hasDelimiter?: boolean; }
 
 const LOCAL_TOOLS: Tool[] = [
   { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Group entries by paragraph, pick columns, join with delimiter.', placeholder: 'Paste text...' },
+  { id: 'secret-link', name: 'Secret Link', icon: '1x', description: 'Burn-after-read link — teks hancur setelah dibuka sekali.', placeholder: '' },
 ];
 
 const CHK_ON = { width: 18, height: 18, borderRadius: 4, border: '2px solid rgba(255,255,255,.4)', background: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 } as const;
@@ -197,6 +199,7 @@ export default function Tools() {
   const tool = tools.find(t => t.id === activeTool) || tools[0];
   const isExtractFields = activeTool === 'strip-text';
   const isPairLines = activeTool === 'pair-lines';
+  const isSecretLink = activeTool === 'secret-link';
 
   const runTool = async () => {
     if (!input.trim()) return showToast('Please enter some input', 'error');
@@ -245,6 +248,8 @@ export default function Tools() {
           <ExtractFieldsTool onResult={setResult} />
         ) : isPairLines ? (
           <PairLinesTool onResult={setResult} />
+        ) : isSecretLink ? (
+          <SecretLinkTool />
         ) : (
           <>
             {tool?.options && (

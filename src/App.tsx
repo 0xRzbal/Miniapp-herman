@@ -12,7 +12,6 @@ const FarmDashboard = lazy(() => import('./pages/FarmDashboard'));
 const MailPage = lazy(() => import('./pages/MailPage'));
 const Tools = lazy(() => import('./pages/Tools'));
 const Notes = lazy(() => import('./pages/Notes'));
-const OTPage = lazy(() => import('./pages/OTPage'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ProtectedPage = lazy(() => import('./pages/ProtectedPage'));
 
@@ -21,7 +20,7 @@ function makeProjectPage(project: ProjectConfig): React.FC {
 }
 
 const staticPages: Record<string, React.LazyExoticComponent<React.FC>> = {
-  home: Home, farm: FarmDashboard, mail: MailPage, tools: Tools, notes: Notes, ot: OTPage, settings: Settings,
+  home: Home, farm: FarmDashboard, mail: MailPage, tools: Tools, notes: Notes, settings: Settings,
 };
 
 function buildPageMap(): Record<string, React.LazyExoticComponent<React.FC>> {

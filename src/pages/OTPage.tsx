@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { apiFetch } from '../lib/api';
 import { showToast } from '../components/Toast';
 
-export default function OTPage() {
+/**
+ * Burn-after-read secret link tool.
+ * Embedded inside the Tools page (the former standalone "Secret" tab).
+ */
+export default function SecretLinkTool() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -11,7 +15,7 @@ export default function OTPage() {
   const fullUrl = result ? `${window.location.origin}${result}` : null;
 
   const handleCreate = async () => {
-    if (!text.trim()) { showToast('Isi teks dulu'); return; }
+    if (!text.trim()) { showToast('Isi teks dulu', 'error'); return; }
     setBusy(true);
     try {
       const res = await apiFetch<{ token: string; url: string }>('/api/ot/create', {
@@ -22,7 +26,7 @@ export default function OTPage() {
       setCopied(false);
     } catch (e: any) {
       const msg = (e?.message || '').includes('401') ? 'Sesi login kedaluwarsa, login ulang' : `Gagal: ${e?.message || e}`;
-      showToast(msg);
+      showToast(msg, 'error');
     } finally {
       setBusy(false);
     }
@@ -35,82 +39,45 @@ export default function OTPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      showToast('Tidak bisa salin otomatis');
+      showToast('Tidak bisa salin otomatis', 'error');
     }
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 48px' }}>
-      <h1 style={{ fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6 }}>Burn-after-read</h1>
-      <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 20 }}>
-        Buat link sekali-baca: isi teks, bagikan link-nya, dan link hanya bisa dibuka 1 kali lalu hancur.
+    <>
+      <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 12 }}>
+        Link sekali-baca: teks dihapus setelah dibuka 1 kali. Maks 100.000 karakter.
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <textarea
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="Tulis rahasia / pesan yang mau dibagikan sekali pakai…"
-          style={{
-            minHeight: 140, padding: 12, borderRadius: 10,
-            border: '1px solid var(--border)', background: 'var(--surface)',
-            color: 'var(--ink)', fontSize: 14, lineHeight: 1.5, resize: 'vertical',
-            fontFamily: 'inherit',
-          }}
-        />
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            onClick={handleCreate}
-            disabled={busy}
-            style={{
-              padding: '10px 20px', borderRadius: 10, cursor: busy ? 'wait' : 'pointer',
-              background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600,
-            }}
-          >
-            {busy ? 'Membuat…' : 'Buat link'}
-          </button>
-          <span style={{ color: 'var(--muted)', fontSize: 12 }}>
-            maks 100.000 karakter
-          </span>
-        </div>
+      <textarea
+        className="textarea"
+        style={{ minHeight: 140 }}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Tulis rahasia / pesan yang mau dibagikan sekali pakai..."
+      />
 
-        {result && fullUrl && (
-          <div style={{
-            marginTop: 8, padding: 14, borderRadius: 12,
-            border: '1px solid var(--border-strong)', background: 'var(--canvas-2)',
-          }}>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
-              Link siap dibagikan (hanya bisa dibuka 1x):
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <code style={{
-                flex: 1, wordBreak: 'break-all', fontSize: 13,
-                padding: '8px 10px', borderRadius: 8, background: 'var(--surface)',
-                border: '1px solid var(--border)',
-              }}>
-                {fullUrl}
-              </code>
-              <button
-                onClick={handleCopy}
-                style={{
-                  padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                  background: 'var(--accent)', color: '#fff', border: 'none', minWidth: 80,
-                }}
-              >
-                {copied ? 'Tersalin ✓' : 'Salin'}
-              </button>
-            </div>
-            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 12 }}>
-              <button
-                onClick={() => { setResult(null); setText(''); }}
-                style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12 }}
-              >
-                Buat lagi
-              </button>
-            </div>
-          </div>
-        )}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+        <button className="btn btn-primary" onClick={handleCreate} disabled={busy} style={{ flex: 1 }}>
+          {busy && <span className="spinner" />}{busy ? 'Membuat...' : 'Buat link'}
+        </button>
+        <button className="btn" onClick={() => { setText(''); setResult(null); }}>Clear</button>
       </div>
-    </div>
+
+      {result && fullUrl && (
+        <div className="card" style={{ marginTop: 14, marginBottom: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>
+            Link siap dibagikan (1x buka)
+          </div>
+          <div className="result-area" style={{ fontSize: 12.5, marginBottom: 10 }}>{fullUrl}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-sm btn-primary" onClick={handleCopy} style={{ flex: 1 }}>
+              {copied ? 'Tersalin' : 'Salin link'}
+            </button>
+            <button className="btn btn-sm" onClick={() => { setResult(null); setText(''); }}>Buat lagi</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
