@@ -353,7 +353,11 @@ export default function Notes() {
                     )}
                     <div className={`note-body${expanded.has(n.id) ? '' : ' note-body-clamp'}`}>{renderText(n.content)}</div>
                     {n.content.length > 220 && (
-                      <button className="note-more" onClick={() => toggleExpand(n.id)}>
+                      <button
+                        className="note-more"
+                        onClick={e => { e.stopPropagation(); toggleExpand(n.id); }}
+                        onKeyDown={e => e.stopPropagation()}
+                      >
                         {expanded.has(n.id) ? 'Ringkas ▲' : 'Selengkapnya ▼'}
                       </button>
                     )}
