@@ -9,7 +9,13 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
+  pinned?: boolean;
 }
+
+const sortNotes = (list: Note[]) => [...list].sort((a, b) => {
+  if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+  return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+});
 
 const fmtTime = (iso: string) => {
   if (!iso) return '';
@@ -164,7 +170,7 @@ export default function Notes() {
   const load = useCallback(async () => {
     try {
       const d = await apiFetch<{ notes: Note[] }>('/api/notes');
-      setNotes(d.notes || []);
+      setNotes(sortNotes(d.notes || []));
     } catch {
       showToast('Gagal muat catatan', 'error');
     } finally {
@@ -209,6 +215,18 @@ export default function Notes() {
   };
 
   const cancel = () => { setShowNew(false); setEditingId(null); setTitle(''); setContent(''); };
+
+  const togglePin = async (n: Note) => {
+    const next = !n.pinned;
+    setNotes(prev => sortNotes(prev.map(x => x.id === n.id ? { ...x, pinned: next } : x)));
+    try {
+      await apiFetch(`/api/notes/${n.id}`, { method: 'PUT', body: JSON.stringify({ pinned: next }) });
+      showToast(next ? 'Catatan disematkan' : 'Semat dilepas', 'success');
+    } catch {
+      setNotes(prev => sortNotes(prev.map(x => x.id === n.id ? { ...x, pinned: !next } : x)));
+      showToast('Gagal menyematkan', 'error');
+    }
+  };
 
   const exportNotes = () => {
     const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), count: notes.length, notes }, null, 2)], { type: 'application/json' });
@@ -316,7 +334,12 @@ export default function Notes() {
               <div key={n.id} className="card" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {n.title && <div className="note-title">{renderText(n.title)}</div>}
+                    {n.title && (
+                      <div className="note-title">
+                        {n.pinned && <span className="note-pin-mark" title="Disematkan">●</span>}
+                        {renderText(n.title)}
+                      </div>
+                    )}
                     <div className={`note-body${expanded.has(n.id) ? '' : ' note-body-clamp'}`}>{renderText(n.content)}</div>
                     {n.content.length > 220 && (
                       <button className="note-more" onClick={() => toggleExpand(n.id)}>
@@ -336,6 +359,16 @@ export default function Notes() {
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                    <button
+                      className={`btn btn-sm btn-ghost note-pin${n.pinned ? ' active' : ''}`}
+                      aria-label={n.pinned ? `Lepas semat ${n.title || 'catatan'}` : `Sematkan ${n.title || 'catatan'}`}
+                      title={n.pinned ? 'Lepas semat' : 'Sematkan di atas'}
+                      onClick={() => togglePin(n)}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill={n.pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 17v5" /><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+                      </svg>
+                    </button>
                     <button className="btn btn-sm btn-ghost" aria-label={`Edit ${n.title || 'catatan'}`} onClick={() => startEdit(n)}>Edit</button>
                     <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} aria-label={`Hapus ${n.title || 'catatan'}`} onClick={() => setConfirmId(n.id)}>Hapus</button>
                   </div>

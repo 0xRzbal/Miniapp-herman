@@ -456,7 +456,10 @@ let notes = loadNotes();
 let noteSeq = notes.reduce((m, n) => Math.max(m, parseInt(n.id, 10) || 0), 0);
 
 app.get('/api/notes', (_req, res) => {
-  const sorted = [...notes].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  const sorted = [...notes].sort((a, b) => {
+    if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+    return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+  });
   res.json({ notes: sorted });
 });
 
@@ -479,12 +482,13 @@ app.post('/api/notes', (req, res) => {
 app.put('/api/notes/:id', (req, res) => {
   const note = notes.find(n => n.id === req.params.id);
   if (!note) return res.status(404).json({ error: 'Note not found' });
-  const { title, content } = req.body || {};
+  const { title, content, pinned } = req.body || {};
   if (title !== undefined && !validateString(title, 200)) return res.status(400).json({ error: 'title too long' });
   if (content !== undefined && !validateString(content)) return res.status(400).json({ error: 'content too long' });
   if (title !== undefined) note.title = title.trim();
   if (content !== undefined) note.content = content;
-  note.updatedAt = new Date().toISOString();
+  if (typeof pinned === 'boolean') note.pinned = pinned;
+  if (title !== undefined || content !== undefined) note.updatedAt = new Date().toISOString();
   if (saveNotes(notes)) {
     res.json({ ok: true, note });
   } else {
@@ -629,6 +633,29 @@ app.get('/internal/auth', (req, res) => {
 });
 
 // System stats
+const TRACKED_SERVICES = [
+  { id: 'nginx.service', name: 'nginx' },
+  { id: '9router.service', name: '9router' },
+  { id: '9router-proxy.service', name: '9router-proxy' },
+  { id: 'joemail-smtp25.service', name: 'joemail' },
+  { id: 'miniapp-serve.service', name: 'miniapp' },
+  { id: 'captcha-solver.service', name: 'captcha-solver' },
+  { id: 'kuesioner.service', name: 'kuesioner' },
+];
+let servicesCache = { at: 0, data: [] };
+function readServices() {
+  if (Date.now() - servicesCache.at < 15000) return servicesCache.data;
+  const data = TRACKED_SERVICES.map(svc => {
+    let active = false;
+    try {
+      active = execSync(`systemctl is-active ${svc.id}`, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() === 'active';
+    } catch { active = false; }
+    return { name: svc.name, active };
+  });
+  servicesCache = { at: Date.now(), data };
+  return data;
+}
+
 app.get('/api/system', (_req, res) => {
   const cpus = os.cpus();
   const totalMem = os.totalmem();
@@ -649,6 +676,7 @@ app.get('/api/system', (_req, res) => {
     cpu: { cores: cpus.length, usage: cpuPct, model: cpus[0]?.model || 'Unknown' },
     memory: { total: totalMem, used: usedMem, free: freeMem, pct: ((usedMem / totalMem) * 100).toFixed(1) },
     disk, uptime: process.uptime(), hostname: os.hostname(),
+    services: readServices(),
   });
 });
 

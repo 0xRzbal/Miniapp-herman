@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import { APP_NAME } from '../config';
 import { SkeletonStats } from '../components/Skeleton';
 
+interface ServiceState { name: string; active: boolean; }
+
 interface SystemStats {
   cpu: { cores: number; usage: string; model: string };
   memory: { total: number; used: number; free: number; pct: string };
   disk: { total: number; used: number; available: number; pct: string };
   uptime: number;
   hostname: string;
+  services?: ServiceState[];
 }
 
 const VPS_INFO = {
@@ -124,6 +127,21 @@ export default function Home() {
             </>
           ) : <div className="spinner" style={{ margin: '20px auto' }} />}
         </div>
+      </div>
+
+      <div className="section-title">Services</div>
+      <div className="card">
+        {stats?.services?.length ? stats.services.map(svc => (
+          <div key={svc.name} className="list-item">
+            <span className="list-item-label" style={{ textTransform: 'none', letterSpacing: 0 }}>{svc.name}</span>
+            <span className="status">
+              <span className={`status-dot ${svc.active ? 'online' : 'offline'}`} />
+              {svc.active ? 'Running' : 'Stopped'}
+            </span>
+          </div>
+        )) : (
+          <div className="list-item"><span className="list-item-label">Services</span><span className="list-item-value">…</span></div>
+        )}
       </div>
 
       <div className="section-title">Overview</div>
