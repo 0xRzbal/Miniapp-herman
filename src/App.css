@@ -505,6 +505,37 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .note-pin svg { display: block; }
 .note-pin.active { color: var(--accent); }
 .note-pin:hover { color: var(--accent); }
+.note-card { cursor: pointer; transition: border-color 0.16s ease, transform 0.16s ease; }
+.note-card:hover { border-color: var(--border-strong); }
+.note-card:active { transform: scale(0.995); }
+.note-card-chevron { font-size: 20px; line-height: 1; color: var(--text-muted); flex-shrink: 0; padding-right: 2px; }
+.note-sheet {
+  width: 100%; max-width: 520px;
+  max-height: min(78vh, 640px);
+  display: flex; flex-direction: column;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 18px 20px;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.6);
+  animation: spring-in 0.2s ease;
+}
+.note-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.note-sheet-title { font-size: 15.5px; font-weight: 700; color: var(--text); line-height: 1.4; word-break: break-word; }
+.note-sheet-close {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: 0; color: var(--text-secondary);
+  font-size: 18px; line-height: 1;
+}
+.note-sheet-close:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+.note-sheet-body {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.65;
+  white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+  overflow-y: auto; flex: 1; min-height: 0;
+  padding-right: 4px;
+}
+.note-sheet-meta { font-size: 10.5px; color: var(--text-muted); margin-top: 12px; letter-spacing: 0.03em; }
+.note-sheet-actions { display: flex; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+.note-sheet-actions .btn { flex: 1; }
+.btn-pin-active { color: var(--accent); border-color: rgba(255,107,74,0.45); background: var(--accent-glow); }
 .note-pin-mark {
   display: inline-block; width: 6px; height: 6px; border-radius: 50%;
   background: var(--accent); margin-right: 7px; vertical-align: middle;

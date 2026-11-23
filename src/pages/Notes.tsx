@@ -145,6 +145,7 @@ export default function Notes() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   // press "/" to jump into search
   useEffect(() => {
@@ -240,6 +241,8 @@ export default function Notes() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const detailNote = detailId ? notes.find(n => n.id === detailId) || null : null;
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return notes;
@@ -331,7 +334,15 @@ export default function Notes() {
               );
             }
             return (
-              <div key={n.id} className="card" style={{ marginBottom: 0 }}>
+              <div
+                key={n.id}
+                className="card note-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailId(n.id)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailId(n.id); } }}
+                style={{ marginBottom: 0 }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {n.title && (
@@ -358,25 +369,46 @@ export default function Notes() {
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                    <button
-                      className={`btn btn-sm btn-ghost note-pin${n.pinned ? ' active' : ''}`}
-                      aria-label={n.pinned ? `Lepas semat ${n.title || 'catatan'}` : `Sematkan ${n.title || 'catatan'}`}
-                      title={n.pinned ? 'Lepas semat' : 'Sematkan di atas'}
-                      onClick={() => togglePin(n)}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill={n.pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 17v5" /><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
-                      </svg>
-                    </button>
-                    <button className="btn btn-sm btn-ghost" aria-label={`Edit ${n.title || 'catatan'}`} onClick={() => startEdit(n)}>Edit</button>
-                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--error)' }} aria-label={`Hapus ${n.title || 'catatan'}`} onClick={() => setConfirmId(n.id)}>Hapus</button>
-                  </div>
+                  <span className="note-card-chevron" aria-hidden="true">›</span>
                 </div>
                 <div className="note-meta">{fmtTime(n.updatedAt)}</div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {detailNote && (
+        <div className="confirm-overlay" onClick={() => setDetailId(null)}>
+          <div className="note-sheet" onClick={e => e.stopPropagation()}>
+            <div className="note-sheet-head">
+              <div className="note-sheet-title">
+                {detailNote.pinned && <span className="note-pin-mark" />}
+                {detailNote.title || 'Tanpa judul'}
+              </div>
+              <button className="note-sheet-close" aria-label="Tutup" onClick={() => setDetailId(null)}>×</button>
+            </div>
+            <div className="note-sheet-body">{renderText(detailNote.content)}</div>
+            {parseDates(`${detailNote.title}
+${detailNote.content}`).map((d, i) => (
+              <div key={i} className="note-date-row" style={{ marginTop: 8 }}>
+                <span style={{ color: 'var(--accent)' }}>⏳</span>
+                <span>{fmtTime(d.toISOString())}</span>
+                <CountdownLine target={d} />
+              </div>
+            ))}
+            <div className="note-sheet-meta">Diperbarui {fmtTime(detailNote.updatedAt)}</div>
+            <div className="note-sheet-actions">
+              <button
+                className={`btn btn-sm${detailNote.pinned ? ' btn-pin-active' : ''}`}
+                onClick={() => togglePin(detailNote)}
+              >
+                {detailNote.pinned ? 'Lepas semat' : 'Sematkan'}
+              </button>
+              <button className="btn btn-sm" onClick={() => { setDetailId(null); startEdit(detailNote); }}>Edit</button>
+              <button className="btn btn-sm btn-danger" onClick={() => { setDetailId(null); setConfirmId(detailNote.id); }}>Hapus</button>
+            </div>
+          </div>
         </div>
       )}
 
