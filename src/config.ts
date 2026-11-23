@@ -51,6 +51,5 @@ const projectTabs: Tab[] = projects
   .filter(p => p.enabled)
   .map(p => ({ id: p.id, label: p.name, icon: 'router', type: 'project' as const, project: p }));
 
-const settingsTab: Tab = { id: 'settings', label: 'Settings', icon: 'settings', type: 'page' };
 
-export const tabs: Tab[] = [...staticTabs, ...projectTabs, settingsTab];
+export const tabs: Tab[] = [...staticTabs, ...projectTabs];

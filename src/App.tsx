@@ -13,7 +13,6 @@ const FarmDashboard = lazy(() => import('./pages/FarmDashboard'));
 const MailPage = lazy(() => import('./pages/MailPage'));
 const Tools = lazy(() => import('./pages/Tools'));
 const Notes = lazy(() => import('./pages/Notes'));
-const Settings = lazy(() => import('./pages/Settings'));
 const ProtectedPage = lazy(() => import('./pages/ProtectedPage'));
 
 function makeProjectPage(project: ProjectConfig): React.FC {
@@ -21,7 +20,7 @@ function makeProjectPage(project: ProjectConfig): React.FC {
 }
 
 const staticPages: Record<string, React.LazyExoticComponent<React.FC>> = {
-  home: Home, farm: FarmDashboard, mail: MailPage, tools: Tools, notes: Notes, settings: Settings,
+  home: Home, farm: FarmDashboard, mail: MailPage, tools: Tools, notes: Notes,
 };
 
 function buildPageMap(): Record<string, React.LazyExoticComponent<React.FC>> {
@@ -100,7 +99,8 @@ export default function App() {
 
   useEffect(() => {
     const onHashChange = () => {
-      const hash = window.location.hash.slice(1).toLowerCase();
+      let hash = window.location.hash.slice(1).toLowerCase();
+      if (hash === 'settings') hash = 'home'; // Settings merged into Home
       if (hash && VALID_TABS.has(hash)) { setActiveTab(hash); try { localStorage.setItem('activeTab', hash); } catch {} }
     };
     window.addEventListener('hashchange', onHashChange);

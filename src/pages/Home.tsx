@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { APP_NAME } from '../config';
+import { APP_NAME, APP_VERSION } from '../config';
 import { SkeletonStats } from '../components/Skeleton';
+import { apiFetch } from '../lib/api';
 
-interface ServiceState { name: string; active: boolean; }
+interface MiniappOnly { hub: boolean; mail: boolean; router: boolean; }
 
 interface SystemStats {
   cpu: { cores: number; usage: string; model: string };
@@ -10,7 +11,6 @@ interface SystemStats {
   disk: { total: number; used: number; available: number; pct: string };
   uptime: number;
   hostname: string;
-  services?: ServiceState[];
 }
 
 const VPS_INFO = {
@@ -40,26 +40,54 @@ export default function Home() {
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [ready, setReady] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [access, setAccess] = useState<MiniappOnly>({ hub: false, mail: false, router: false });
+  const [accessLoading, setAccessLoading] = useState(true);
 
   useEffect(() => {
     const check = async () => {
       try {
         const res = await fetch('/api/health', { signal: AbortSignal.timeout(3000) });
-        if (res.ok) { setStatus('online'); try { const r = await fetch('/api/system', { signal: AbortSignal.timeout(5000) }); if (r.ok) setStats(await r.json()); } catch {} }
-        else setStatus('offline');
+        if (res.ok) {
+          setStatus('online');
+          try { const r = await fetch('/api/system', { signal: AbortSignal.timeout(5000) }); if (r.ok) setStats(await r.json()); } catch {}
+        } else setStatus('offline');
       } catch { setStatus('offline'); } finally { setReady(true); }
     };
-    check(); const iv = setInterval(check, 30000); return () => clearInterval(iv);
+    check();
+    const iv = setInterval(check, 30000);
+    return () => clearInterval(iv);
   }, []);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
+
+  useEffect(() => {
+    apiFetch<{ miniapp_only: MiniappOnly | boolean }>('/api/settings')
+      .then(s => {
+        const mo = s.miniapp_only;
+        if (typeof mo === 'object' && mo !== null) setAccess({ hub: !!mo.hub, mail: !!mo.mail, router: !!mo.router });
+        else { const v = !!mo; setAccess({ hub: v, mail: v, router: v }); }
+      })
+      .catch(() => {})
+      .finally(() => setAccessLoading(false));
+  }, []);
+
+  const toggleAccess = async (svc: keyof MiniappOnly) => {
+    const prev = access;
+    const next = { ...access, [svc]: !access[svc] };
+    setAccess(next);
+    try {
+      await apiFetch('/api/settings', { method: 'POST', body: JSON.stringify({ key: 'miniapp_only', value: next }) });
+    } catch {
+      setAccess(prev);
+    }
+  };
 
   if (!ready) {
     return (
       <div style={{ animation: 'fade-in 0.25s ease' }}>
         <div className="section-title">System</div>
         <SkeletonStats rows={3} />
-        <div className="section-title">Services</div>
+        <div className="section-title">Overview</div>
         <SkeletonStats rows={2} />
       </div>
     );
@@ -129,26 +157,34 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="section-title">Services</div>
-      <div className="card">
-        {stats?.services?.length ? stats.services.map(svc => (
-          <div key={svc.name} className="list-item">
-            <span className="list-item-label" style={{ textTransform: 'none', letterSpacing: 0 }}>{svc.name}</span>
-            <span className="status">
-              <span className={`status-dot ${svc.active ? 'online' : 'offline'}`} />
-              {svc.active ? 'Running' : 'Stopped'}
-            </span>
-          </div>
-        )) : (
-          <div className="list-item"><span className="list-item-label">Services</span><span className="list-item-value">…</span></div>
-        )}
-      </div>
-
       <div className="section-title">Overview</div>
       <div className="card">
         <div className="list-item"><span className="list-item-label">Uptime</span><span className="list-item-value">{stats ? fmtUptime(stats.uptime) : '...'}</span></div>
         <div className="list-item"><span className="list-item-label">Cores</span><span className="list-item-value">{stats ? stats.cpu.cores : '...'}</span></div>
         <div className="list-item"><span className="list-item-label">API</span><span className="status"><span className={`status-dot ${status}`} />{status === 'online' ? 'Operational' : 'Offline'}</span></div>
+      </div>
+
+      <div className="section-title">Access Control</div>
+      <div className="card">
+        {([
+          { key: 'hub' as const, label: 'Full Access', desc: 'Block external browser access' },
+          { key: 'mail' as const, label: 'Mail', desc: 'Block JoeMail external access' },
+          { key: 'router' as const, label: '9Router', desc: 'Block 9Router external access' },
+        ]).map(svc => (
+          <div key={svc.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', borderBottom: '0.5px solid var(--border-subtle)', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="list-item-label" style={{ fontSize: 13, textTransform: 'none', letterSpacing: 0 }}>{svc.label}</div>
+              <div className="list-item-desc">{svc.desc}</div>
+            </div>
+            <button
+              className={`toggle ${access[svc.key] ? 'active' : ''}`}
+              aria-label={`${svc.label} access gate`}
+              onClick={() => toggleAccess(svc.key)}
+              disabled={accessLoading}
+            />
+          </div>
+        ))}
+        <div className="list-item"><span className="list-item-label">Version</span><span className="list-item-value">{APP_NAME} {APP_VERSION}</span></div>
       </div>
     </div>
   );
