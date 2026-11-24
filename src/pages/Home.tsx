@@ -142,17 +142,10 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div className="hero-strip">
-          <span>up {stats ? fmtUptime(stats.uptime) : '…'}</span>
-          <span>load {stats?.load ? stats.load[0].toFixed(2) : '…'}</span>
-          <span>ram {stats ? stats.memory.pct + '%' : '…'}</span>
-          <span>disk {stats ? stats.disk.pct + '%' : '…'}</span>
-        </div>
         <div className="tile-hero-foot">
           <span className={`badge ${status === 'online' ? 'ok' : 'bad'}`}>
             {status === 'checking' ? 'checking' : status === 'online' ? 'Online' : 'Offline'}
           </span>
-          <span className="tile-hero-meta">{stats?.host?.hostname || '—'} · up {stats ? fmtUptime(stats.uptime) : '…'}</span>
         </div>
       </div>
 
