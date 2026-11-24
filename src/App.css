@@ -956,3 +956,9 @@ mark.hl { background: rgba(229, 106, 74, 0.22); color: inherit; border-radius: 3
 .hero-strip { gap: 5px; }
 .hero-strip span { padding: 3px 8px; }
 .hero-strip span { padding: 3px 7px; }
+
+/* System card: even, breathing room between the three meters */
+.metric-list { justify-content: flex-start; gap: 18px; padding-top: 8px; }
+.metric-head { margin-bottom: 8px; }
+.metric-value { font-size: 12.5px; }
+.metric-label { font-size: 12.5px; letter-spacing: 0.01em; }

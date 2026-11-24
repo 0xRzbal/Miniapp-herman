@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { APP_NAME, APP_VERSION } from '../config';
+import { APP_VERSION } from '../config';
 import { SkeletonStats } from '../components/Skeleton';
 import { apiFetch } from '../lib/api';
 import { getTheme, applyTheme } from '../lib/theme';
@@ -114,7 +114,6 @@ export default function Home() {
         <div className="hero-top">
           <div>
             <h2>{greeting}</h2>
-            <p>{APP_NAME} · {(stats?.host?.distro || 'VPS console').replace(/\s*LTS\s*$/, '')}</p>
           </div>
           <div className="hero-right">
             <div className="hero-clock">
@@ -141,11 +140,6 @@ export default function Home() {
               )}
             </button>
           </div>
-        </div>
-        <div className="tile-hero-foot">
-          <span className={`badge ${status === 'online' ? 'ok' : 'bad'}`}>
-            {status === 'checking' ? 'checking' : status === 'online' ? 'Online' : 'Offline'}
-          </span>
         </div>
       </div>
 
@@ -201,11 +195,8 @@ export default function Home() {
         <div className="tile-title">Overview</div>
         <div className="mini-grid">
           <div className="mini-stat"><span>Uptime</span><strong>{stats ? fmtUptime(stats.uptime) : '…'}</strong></div>
-          <div className="mini-stat"><span>Cores</span><strong>{stats ? stats.cpu.cores : '…'}</strong></div>
           <div className="mini-stat"><span>API</span><strong style={{ color: status === 'online' ? 'var(--color-success)' : 'var(--color-danger)' }}>{status === 'online' ? 'OK' : status === 'checking' ? '…' : 'DOWN'}</strong></div>
           <div className="mini-stat"><span>Load</span><strong>{stats?.load ? stats.load[0].toFixed(2) : '…'}</strong></div>
-          <div className="mini-stat"><span>RAM</span><strong>{stats ? stats.memory.pct + '%' : '…'}</strong></div>
-          <div className="mini-stat"><span>Disk</span><strong>{stats ? stats.disk.pct + '%' : '…'}</strong></div>
         </div>
       </div>
 
