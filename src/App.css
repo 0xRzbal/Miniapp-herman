@@ -1204,5 +1204,5 @@ mark.hl { background: rgba(229, 106, 74, 0.22); color: inherit; border-radius: 3
 
 @media (pointer: coarse) {
   .input, .textarea, .search-input, input[type="text"], textarea, select { font-size: 16px; }
-  textarea { resize: none; }
+  .textarea, textarea { resize: none; }
 }
