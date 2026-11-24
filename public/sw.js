@@ -1,7 +1,10 @@
-const CACHE = 'rzbal-hub-v3';
+const CACHE = 'rzbal-hub-v5';
+const SHELL = ['/offline.html'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(self.skipWaiting());
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -41,7 +44,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // HTML (index shell): network-first so a new deploy lands immediately, cache only as offline fallback.
+  // HTML (index shell): network-first so a new deploy lands immediately, offline page as last resort.
   if (e.request.headers.get('accept')?.includes('text/html')) {
     e.respondWith(
       fetch(e.request)
@@ -52,7 +55,12 @@ self.addEventListener('fetch', (e) => {
           }
           return res;
         })
-        .catch(async () => (await caches.match(e.request)) || (await caches.match('/')) || Response.error()),
+        .catch(async () =>
+          (await caches.match(e.request)) ||
+          (await caches.match('/')) ||
+          (await caches.match('/offline.html')) ||
+          Response.error(),
+        ),
     );
   }
 });

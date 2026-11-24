@@ -1141,3 +1141,46 @@ mark.hl { background: rgba(229, 106, 74, 0.22); color: inherit; border-radius: 3
 /* Pinned-only filter chip */
 .pin-chip { display: inline-flex; align-items: center; gap: 5px; }
 .pin-chip svg { flex-shrink: 0; }
+
+/* ---------- Bulk select (notes) ---------- */
+.skel-bar { display: inline-block; border-radius: 4px; }
+
+.note-card.selectable { cursor: pointer; }
+.note-card.selectable:active { transform: none; }
+.note-card.selected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+}
+.note-check {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 999px;
+  border: 1.5px solid var(--color-border); color: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.note-check.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+.note-grid.selecting { padding-bottom: 84px; }
+.bulk-bar {
+  position: fixed; left: 12px; right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  z-index: 40; display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px 8px 14px; border-radius: 14px;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3);
+}
+.bulk-link {
+  background: none; border: 0; padding: 6px 2px; color: var(--color-primary);
+  font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.bulk-count { flex: 1; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.bulk-acts { display: flex; gap: 6px; }
+.bulk-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--text);
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: 9px; padding: 7px 10px;
+}
+.bulk-btn:disabled { opacity: .45; }
+.bulk-btn.danger { color: var(--color-danger); }
+@media (min-width: 900px) {
+  .bulk-bar { left: auto; right: 28px; bottom: 22px; min-width: 430px; }
+}

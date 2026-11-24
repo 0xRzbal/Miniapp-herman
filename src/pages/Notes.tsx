@@ -196,12 +196,21 @@ export default function Notes() {
         e.preventDefault();
         searchRef.current?.focus();
       }
-      if (e.key === 'Escape') setConfirmId(null);
+      if (e.key === 'Escape') {
+        setConfirmId(null);
+        setBulkConfirm(false);
+        setSelectMode(false);
+        setSelected(new Set());
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
   const [deleting, setDeleting] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   const CLAMP_H = 125;
 
@@ -293,13 +302,66 @@ export default function Notes() {
     }
   };
 
+  const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
+
+  const toggleSelect = (id: string) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const bulkPin = async (pinned: boolean) => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    setBulkBusy(true);
+    const snapshot = notes;
+    setNotes(prev => sortNotes(prev.map(x => (selected.has(x.id) ? { ...x, pinned } : x))));
+    try {
+      await Promise.all(ids.map(id => apiFetch(`/api/notes/${id}`, { method: 'PUT', body: JSON.stringify({ pinned }) })));
+      setNotes(prev => sortNotes(prev.map(x => (selected.has(x.id) ? { ...x, pinned } : x))));
+      haptic('success');
+      showToast(pinned ? `${ids.length} catatan disematkan` : `Semat ${ids.length} catatan dilepas`, 'success');
+      exitSelect();
+    } catch {
+      setNotes(snapshot);
+      showToast('Gagal menyematkan', 'error');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const bulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    setBulkBusy(true);
+    try {
+      await Promise.all(ids.map(id => apiFetch(`/api/notes/${id}`, { method: 'DELETE' })));
+      setNotes(prev => prev.filter(n => !selected.has(n.id)));
+      showToast(`${ids.length} catatan dihapus`, 'success');
+      haptic('success');
+      setBulkConfirm(false);
+      exitSelect();
+    } catch {
+      showToast('Gagal hapus', 'error');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (!confirmId && !showNew) return;
     return bindBackButton(() => {
       if (confirmId) { setConfirmId(null); return; }
+      if (bulkConfirm) { setBulkConfirm(false); return; }
       if (showNew) cancel();
     });
-  }, [confirmId, showNew]);
+  }, [confirmId, showNew, bulkConfirm]);
+
+  useEffect(() => {
+    if (!selectMode) return;
+    return bindBackButton(() => exitSelect());
+  }, [selectMode]);
 
   const catCounts = useMemo(() => {
     const c: Record<string, number> = { all: notes.length, project: 0, bounty: 0, farm: 0, infra: 0, other: 0 };
@@ -319,6 +381,9 @@ export default function Notes() {
     });
   }, [notes, query, cat, pinnedOnly]);
 
+  const shownIds = filtered.map(n => n.id);
+  const allShownSelected = shownIds.length > 0 && shownIds.every(id => selected.has(id));
+
   return (
     <div style={{ animation: 'fade-in 0.3s ease' }}>
       <div className="notes-head">
@@ -327,7 +392,12 @@ export default function Notes() {
           <span className="notes-count">{notes.length}</span>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {!showNew && <button className="btn btn-sm btn-primary" onClick={startNew}>+ Baru</button>}
+          {!showNew && notes.length > 0 && (
+            <button className={`btn btn-sm${selectMode ? '' : ' btn-ghost'}`} onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}>
+              {selectMode ? 'Batal' : 'Pilih'}
+            </button>
+          )}
+          {!showNew && !selectMode && <button className="btn btn-sm btn-primary" onClick={startNew}>+ Baru</button>}
         </div>
       </div>
 
@@ -430,7 +500,7 @@ export default function Notes() {
           {notes.length === 0 ? 'Tekan "+ Baru" untuk mulai mencatat.' : `Tidak ada catatan yang cocok dengan "${query}".`}
         </div>
       ) : (
-        <div className="note-grid">
+        <div className={`note-grid${selectMode ? ' selecting' : ''}`}>
           {filtered.map(n => {
             const dates = parseDates(`${n.title}\n${n.content}`);
             if (editingId === n.id) {
@@ -452,13 +522,25 @@ export default function Notes() {
               );
             }
             return (
-              <div key={n.id} className="card note-card" style={{ marginBottom: 0 }}>
+              <div
+                key={n.id}
+                className={`card note-card${selectMode ? ' selectable' : ''}${selected.has(n.id) ? ' selected' : ''}`}
+                style={{ marginBottom: 0 }}
+                onClick={selectMode ? () => toggleSelect(n.id) : undefined}
+              >
                 <div className="note-card-head">
+                  {selectMode && (
+                    <span className={`note-check${selected.has(n.id) ? ' on' : ''}`} aria-hidden="true">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </span>
+                  )}
                   <div className="note-title">
                     {n.pinned && <span className="note-pin-mark" title="Disematkan">●</span>}
                     {renderText(n.title || 'Tanpa judul', query)}
                   </div>
-                  <div className="note-actions">
+                  <div className="note-actions" style={selectMode ? { display: 'none' } : undefined}>
                     <button
                       className={`note-act${n.pinned ? ' on' : ''}`}
                       aria-label={n.pinned ? 'Lepas semat' : 'Sematkan'}
@@ -508,6 +590,41 @@ export default function Notes() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {selectMode && (
+        <div className="bulk-bar">
+          <button className="bulk-link" onClick={() => setSelected(allShownSelected ? new Set() : new Set(shownIds))}>
+            {allShownSelected ? 'Kosongkan' : 'Pilih semua'}
+          </button>
+          <span className="bulk-count">{selected.size} dipilih</span>
+          <div className="bulk-acts">
+            <button className="bulk-btn" disabled={!selected.size || bulkBusy} onClick={() => bulkPin(true)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 17v5" /><path d="M9 10.5V4h6v6.5l2 3.5H7l2-3.5z" />
+              </svg>
+              Semat
+            </button>
+            <button className="bulk-btn" disabled={!selected.size || bulkBusy} onClick={() => bulkPin(false)}>Lepas</button>
+            <button className="bulk-btn danger" disabled={!selected.size || bulkBusy} onClick={() => setBulkConfirm(true)}>Hapus</button>
+          </div>
+        </div>
+      )}
+
+      {bulkConfirm && (
+        <div className="confirm-overlay" onClick={() => !bulkBusy && setBulkConfirm(false)}>
+          <div className="confirm-box" onClick={e => e.stopPropagation()}>
+            <div className="confirm-title">Hapus {selected.size} catatan?</div>
+            <div className="confirm-text">{Array.from(selected).map(id => notes.find(n => n.id === id)?.title || 'Tanpa judul').slice(0, 3).join(' · ')}{selected.size > 3 ? ` · +${selected.size - 3} lagi` : ''}</div>
+            <div className="confirm-sub">Catatan yang dihapus tidak bisa dikembalikan.</div>
+            <div className="confirm-actions">
+              <button className="btn" style={{ flex: 1 }} onClick={() => setBulkConfirm(false)} disabled={bulkBusy}>Batal</button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={bulkDelete} disabled={bulkBusy}>
+                {bulkBusy ? 'Menghapus...' : 'Hapus semua'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

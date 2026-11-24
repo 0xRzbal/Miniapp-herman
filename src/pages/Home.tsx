@@ -194,7 +194,21 @@ export default function Home() {
             <Bar label="Memory" value={`${fmtBytes(stats.memory.used)} / ${fmtBytes(stats.memory.total)}`} pct={memPct} color="var(--ios-purple)" />
             <Bar label="Disk" value={`${fmtBytes(stats.disk.used)} / ${fmtBytes(stats.disk.total)}`} pct={diskPct} color="var(--ios-yellow)" />
           </div>
-        ) : <div className="spinner" style={{ margin: '16px auto' }} />}
+        ) : (
+          <div className="metric-list">
+            {[0, 1, 2].map(i => (
+              <div className="metric" key={i}>
+                <div className="metric-head">
+                  <span className="skeleton skel-bar" style={{ width: i === 0 ? '32px' : i === 1 ? '54px' : '30px', height: '10px' }} />
+                  <span className="skeleton skel-bar" style={{ width: '52px', height: '10px' }} />
+                </div>
+                <div className="metric-track">
+                  <div className="skeleton" style={{ width: `${[38, 52, 74][i]}%`, height: '100%', borderRadius: '999px' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="tile tile-overview">
