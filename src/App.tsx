@@ -3,7 +3,7 @@ import { tabs, projects } from './config';
 import type { ProjectConfig } from './config';
 import Icon from './components/Icon';
 import { haptic } from './lib/telegram';
-import { getTheme, applyTheme } from './lib/theme';
+import { applyTheme } from './lib/theme';
 import type { IconName } from './components/Icon';
 import Toast from './components/Toast';
 import AuthModal from './components/AuthModal';
@@ -54,7 +54,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [user, setUser] = useState<{ id: string; username: string; role: string } | null>(null);
   const [showAuth, setShowAuth] = useState(false);
-  useEffect(() => { applyTheme(getTheme()); }, []);
+  useEffect(() => { applyTheme(); }, []);
 
   // Check for existing auth on mount
   useEffect(() => {
@@ -101,7 +101,6 @@ export default function App() {
     return () => window.removeEventListener('resize', setVH);
   }, []);
 
-  useEffect(() => { document.documentElement.setAttribute('data-theme', 'dark'); }, []);
 
   useEffect(() => {
     const onHashChange = () => {

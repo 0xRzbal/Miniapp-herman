@@ -1,29 +1,25 @@
-export type Theme = 'light' | 'dark';
+export type Theme = 'dark';
 
-const KEY = 'hub-theme';
-const CHROME: Record<Theme, string> = { light: '#fdfaf6', dark: '#1a1a1a' };
+const CHROME = '#1a1a1a';
 
+/** The hub ships dark-only; kept as a function so callers stay unchanged. */
 export function getTheme(): Theme {
-  try {
-    const saved = localStorage.getItem(KEY);
-    if (saved === 'light' || saved === 'dark') return saved;
-  } catch {}
   return 'dark';
 }
 
-export function applyTheme(theme: Theme) {
+export function applyTheme(_theme?: Theme) {
   const root = document.documentElement;
-  root.classList.toggle('dark', theme === 'dark');
-  root.style.colorScheme = theme;
-  root.setAttribute('data-theme', theme);
-  try { localStorage.setItem(KEY, theme); } catch {}
+  root.classList.add('dark');
+  root.style.colorScheme = 'dark';
+  root.setAttribute('data-theme', 'dark');
+  try { localStorage.removeItem('hub-theme'); } catch {}
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', CHROME[theme]);
+  if (meta) meta.setAttribute('content', CHROME);
 
   const tg = (window as any).Telegram?.WebApp;
   if (tg) {
-    try { tg.setHeaderColor?.(CHROME[theme]); tg.setBackgroundColor?.(CHROME[theme]); } catch {}
+    try { tg.setHeaderColor?.(CHROME); tg.setBackgroundColor?.(CHROME); } catch {}
   }
   window.dispatchEvent(new Event('hub-theme-change'));
 }

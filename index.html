@@ -14,15 +14,11 @@
     <link rel="preload" href="/fonts/Inter-700.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       (function () {
-        var t = null;
-        try { t = localStorage.getItem('hub-theme'); } catch (e) {}
-        if (t !== 'light' && t !== 'dark') {
-          t = 'dark';
-        }
-        document.documentElement.classList.toggle('dark', t === 'dark');
-        document.documentElement.style.colorScheme = t;
-        document.documentElement.setAttribute('data-theme', t);
-        var c = t === 'dark' ? '#1a1a1a' : '#fdfaf6';
+        try { localStorage.removeItem('hub-theme'); } catch (e) {}
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+        document.documentElement.setAttribute('data-theme', 'dark');
+        var c = '#1a1a1a';
         var m = document.querySelector('meta[name="theme-color"]');
         if (m) m.setAttribute('content', c);
         document.write('<style>#splash{background:' + c + '}</style>');

@@ -6,66 +6,6 @@
   --color-brand-600: #cc5236;
   --color-primary: var(--color-brand-500);
   --color-primary-hover: var(--color-brand-600);
-
-  --color-bg: #fdfaf6;
-  --color-bg-alt: #f7f3ee;
-  --color-surface: #ffffff;
-  --color-surface-2: #f4f4f5;
-  --color-surface-3: #e7e7e9;
-  --color-sidebar: #f4f1ecd9;
-  --color-border: #e5e7eb;
-  --color-border-subtle: #f1f1f3;
-  --color-text-main: #0a0a0a;
-  --color-text-muted: #6b7280;
-  --color-text-subtle: #9ca3af;
-  --color-danger: #cf222e;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
-
-  --radius-brand: 10px;
-  --radius-brand-lg: 14px;
-
-  --shadow-soft: 0 1px 2px 0 #0000000a;
-  --shadow-warm: 0 2px 12px -2px #e56a4a2e;
-  --shadow-elevated: 0 12px 28px -4px #3c322d0f;
-  --shadow-elev: inset 0 1px 0 0 #fffc, 0 1px 2px #0f172a0a, 0 12px 36px -8px #0f172a1a;
-  --shadow-focus: 0 0 0 3px #e56a4a2e;
-
-  /* legacy aliases used across the app */
-  --bg: var(--color-bg);
-  --bg-card: var(--color-surface);
-  --bg-input: var(--color-surface-2);
-  --bg-elevated: var(--color-surface-2);
-  --bg-hover: var(--color-surface-2);
-  --text: var(--color-text-main);
-  --text-secondary: #4b5563;
-  --text-muted: var(--color-text-muted);
-  --accent: var(--color-brand-500);
-  --accent-glow: rgba(229, 106, 74, 0.14);
-  --accent-gradient: linear-gradient(135deg, #e56a4a, #ee8d6a);
-  --border: var(--color-border);
-  --border-strong: #d1d5db;
-  --border-subtle: var(--color-border-subtle);
-  --success: var(--color-success);
-  --error: var(--color-danger);
-  --gradient-btn: var(--color-surface);
-  --gradient-card: var(--color-surface);
-  --shadow-card: var(--shadow-soft);
-  --shadow-btn: var(--shadow-soft);
-  --shadow-accent: var(--shadow-warm);
-  --ios-purple: #a855f7;
-  --ios-yellow: #f59e0b;
-  --ios-green: var(--color-success);
-  --ios-red: var(--color-danger);
-
-  --radius-sm: 8px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  color-scheme: light;
-}
-
-.dark {
   --color-bg: #1a1a1a;
   --color-bg-alt: #1f1f1e;
   --color-surface: #262626;
@@ -81,12 +21,13 @@
   --color-success: #22c55e;
   --color-warning: #fbbf24;
   --color-info: #60a5fa;
-
+  --radius-brand: 10px;
+  --radius-brand-lg: 14px;
   --shadow-soft: 0 1px 2px 0 #0000004d;
   --shadow-warm: 0 2px 12px -2px #e56a4a40;
   --shadow-elevated: 0 12px 28px -4px #00000073;
   --shadow-elev: inset 0 1px 0 0 #ffffff0f, 0 1px 2px #0006, 0 16px 48px -8px #0000008c;
-
+  --shadow-focus: 0 0 0 3px #e56a4a2e;
   --bg: var(--color-bg);
   --bg-card: var(--color-surface);
   --bg-input: var(--color-surface-2);
@@ -94,14 +35,31 @@
   --bg-hover: var(--color-surface-2);
   --text: var(--color-text-main);
   --text-secondary: #b4b4b4;
+  --text-muted: var(--color-text-muted);
+  --accent: var(--color-brand-500);
+  --accent-glow: rgba(229, 106, 74, 0.14);
+  --accent-gradient: linear-gradient(135deg, #e56a4a, #ee8d6a);
   --border: var(--color-border);
   --border-strong: #4b4b4b;
-
+  --border-subtle: var(--color-border-subtle);
+  --success: var(--color-success);
+  --error: var(--color-danger);
+  --gradient-btn: var(--color-surface);
+  --gradient-card: var(--color-surface);
+  --shadow-card: var(--shadow-soft);
+  --shadow-btn: var(--shadow-soft);
+  --shadow-accent: var(--shadow-warm);
   --ios-purple: #bf5af2;
   --ios-yellow: #fbbf24;
-
+  --ios-green: var(--color-success);
+  --ios-red: var(--color-danger);
+  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-lg: 14px;
   color-scheme: dark;
 }
+
+
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -120,15 +78,15 @@ html, body, #root {
 button { cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; user-select: none; }
 input, textarea, select { font-family: inherit; accent-color: var(--color-primary); }
 ::selection { background-color: #e56a4a40; color: var(--color-primary); }
-.dark ::selection { background-color: #e56a4a4d; color: var(--color-brand-300); }
+::selection { background-color: #e56a4a4d; color: var(--color-brand-300); }
 
 * { scrollbar-width: thin; scrollbar-color: #78787859 transparent; }
-.dark * { scrollbar-color: #b4b4b44d transparent; }
+* { scrollbar-color: #b4b4b44d transparent; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background-color: #78787859; border-radius: 20px; }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--color-primary); }
-.dark ::-webkit-scrollbar-thumb { background-color: #b4b4b44d; }
+::-webkit-scrollbar-thumb { background-color: #b4b4b44d; }
 
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes spring-in { 0% { opacity: 0; transform: scale(0.98) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
