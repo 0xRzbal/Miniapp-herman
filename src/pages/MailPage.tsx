@@ -1,49 +1,13 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useRef, useState } from 'react';
+import EmbedBox from '../components/EmbedBox';
 
 export default function MailPage() {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(true);
-  const mailSrc = useMemo(() => `/mail/?_=${Date.now()}`, []);
-
-  useEffect(() => {
-    const resize = () => {
-      if (iframeRef.current) {
-        iframeRef.current.style.height = `${window.innerHeight - 130}px`;
-      }
-    };
-    resize();
-    window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
-  }, []);
+  const mailSrc = useRef(`/mail/?_=${Date.now()}`).current;
 
   return (
-    <div>
-      <div style={{
-        position: 'relative', borderRadius: 'var(--radius)', overflow: 'hidden',
-        border: '1px solid var(--border)', background: 'var(--bg-card)',
-        minHeight: 400,
-      }}>
-        {loading && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            gap: 12, background: 'var(--bg)', zIndex: 1,
-          }}>
-            <div className="spinner" />
-            <span style={{
-              fontSize: 11, color: 'var(--text-muted)', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-            }}>Loading JoeMail</span>
-          </div>
-        )}
-        <iframe
-          ref={iframeRef}
-          src={mailSrc}
-          style={{ width: '100%', height: 'calc(100vh - 130px)', border: 'none', display: 'block', background: 'var(--color-bg)' }}
-          title="JoeMail"
-          onLoad={() => setLoading(false)}
-        />
-      </div>
-    </div>
+    <EmbedBox label="Memuat JoeMail" loaded={!loading}>
+      <iframe src={mailSrc} title="JoeMail" onLoad={() => setLoading(false)} />
+    </EmbedBox>
   );
 }

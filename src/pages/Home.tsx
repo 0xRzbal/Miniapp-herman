@@ -229,14 +229,15 @@ export default function Home() {
       <div className="tile tile-access">
         <div className="tile-title">Access Control<span>v{APP_VERSION}</span></div>
         {([
-          { key: 'hub' as const, label: 'Full Access', desc: 'Block external browser access' },
-          { key: 'mail' as const, label: 'Mail', desc: 'Block JoeMail external access' },
-          { key: 'router' as const, label: '9Router', desc: 'Block 9Router external access' },
+          { key: 'hub' as const, label: 'Full Access', desc: 'Block external browser access', url: 'miniapp-herman-bot.rzbal.xyz', href: 'https://miniapp-herman-bot.rzbal.xyz' },
+          { key: 'mail' as const, label: 'Mail', desc: 'Block JoeMail external access', url: 'mail.rzbal.xyz', href: 'https://mail.rzbal.xyz' },
+          { key: 'router' as const, label: '9Router', desc: 'Block 9Router external access', url: '9router.rzbal.xyz', href: 'https://9router.rzbal.xyz' },
         ]).map(svc => (
           <div key={svc.key} className="ac-row">
             <div className="ac-text">
               <div className="ac-label">{svc.label}</div>
               <div className="ac-desc">{svc.desc}</div>
+              <a className="ac-link" href={svc.href} target="_blank" rel="noopener noreferrer">{svc.url}</a>
             </div>
             <button
               className={`toggle ${access[svc.key] ? 'active' : ''}`}
