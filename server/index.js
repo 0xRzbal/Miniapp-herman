@@ -594,6 +594,13 @@ app.get('/internal/auth', (req, res) => {
     isLocked = !!mo;
   }
   if (!isLocked) return res.status(200).end();
+  const originalUriEarly = req.headers['x-original-uri'] || '';
+  // The Telegram-only lock guards browser page loads and dashboard endpoints.
+  // The OpenAI-compatible /v1 surface is authenticated by the app with API keys,
+  // so programmatic gateway clients (Hermes, bots) must never be blocked here.
+  if (service === 'router' && /^\/v1(\/|$)/.test(originalUriEarly)) {
+    return res.status(200).end();
+  }
   const bypass = req.headers['x-auth-bypass'] || '';
   if (bypass === AUTH_BYPASS_TOKEN) return res.status(200).end();
   const token = req.headers['x-auth-token'] || '';
