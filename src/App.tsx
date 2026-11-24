@@ -200,6 +200,7 @@ export default function App() {
         )}
 
         <main className="app-content" ref={scrollRef}>
+          <h1 className="sr-only">rzbal Hub</h1>
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback />}>
               <div key={activeTab} className="page-transition">

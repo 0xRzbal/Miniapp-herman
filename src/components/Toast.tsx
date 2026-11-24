@@ -33,7 +33,7 @@ export default function Toast() {
   return (
     <div className="toast-container">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.type}`}>
+        <div key={t.id} className={`toast ${t.type}`} role="status" aria-live="polite">
           {t.message}
         </div>
       ))}

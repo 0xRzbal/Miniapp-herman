@@ -252,6 +252,36 @@ export default function Notes() {
 
   useEffect(() => { load(); }, [load]);
 
+  const DRAFT_KEY = 'hub-note-draft';
+
+  // restore an unfinished draft (tab switch, webview reload, app kill)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { id?: string | null; title?: string; content?: string; at?: number };
+      if (!d || (!(d.title || '').trim() && !(d.content || '').trim())) return;
+      if (Date.now() - (d.at || 0) > 7 * 864e5) { localStorage.removeItem(DRAFT_KEY); return; }
+      setEditingId(d.id ?? null);
+      setTitle(d.title || '');
+      setContent(d.content || '');
+      setShowNew(true);
+      showToast('Draft dipulihkan', 'success');
+    } catch {}
+  }, []);
+
+  // keep the draft on disk while typing (debounced)
+  useEffect(() => {
+    if (!showNew) return;
+    const t = setTimeout(() => {
+      try {
+        if (!title.trim() && !content.trim()) { localStorage.removeItem(DRAFT_KEY); return; }
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ id: editingId, title, content, at: Date.now() }));
+      } catch {}
+    }, 400);
+    return () => clearTimeout(t);
+  }, [showNew, editingId, title, content]);
+
   const startNew = () => { setEditingId(null); setTitle(''); setContent(''); setShowNew(true); };
   const startEdit = (n: Note) => { setEditingId(n.id); setTitle(n.title); setContent(n.content); setShowNew(true); };
 
@@ -266,6 +296,7 @@ export default function Notes() {
         showToast('Catatan disimpan', 'success');
       }
       setShowNew(false); setEditingId(null); setTitle(''); setContent('');
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       haptic('success');
       await load();
     } catch { showToast('Gagal simpan', 'error'); }
@@ -288,7 +319,10 @@ export default function Notes() {
     }
   };
 
-  const cancel = () => { setShowNew(false); setEditingId(null); setTitle(''); setContent(''); };
+  const cancel = () => {
+    setShowNew(false); setEditingId(null); setTitle(''); setContent('');
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  };
 
   const togglePin = async (n: Note) => {
     const next = !n.pinned;
