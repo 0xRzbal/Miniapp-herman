@@ -48,6 +48,7 @@ export default function Home() {
   const [access, setAccess] = useState<MiniappOnly>({ hub: false, mail: false, router: false });
   const [accessLoading, setAccessLoading] = useState(true);
   const [theme, setTheme] = useState<Theme>(getTheme);
+  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     const check = async () => {
@@ -55,6 +56,7 @@ export default function Home() {
         const res = await fetch('/api/health', { signal: AbortSignal.timeout(3000) });
         if (res.ok) {
           setStatus('online');
+          setSyncedAt(new Date());
           try { const r = await fetch('/api/system', { signal: AbortSignal.timeout(5000) }); if (r.ok) setStats(await r.json()); } catch {}
         } else setStatus('offline');
       } catch { setStatus('offline'); } finally { setReady(true); }
@@ -199,7 +201,13 @@ export default function Home() {
         <div className="tile-title">Overview</div>
         <div className="mini-grid">
           <div className="mini-stat"><span>Uptime</span><strong>{stats ? fmtUptime(stats.uptime) : '…'}</strong></div>
-          <div className="mini-stat"><span>API</span><strong style={{ color: status === 'online' ? 'var(--color-success)' : 'var(--color-danger)' }}>{status === 'online' ? 'OK' : status === 'checking' ? '…' : 'DOWN'}</strong></div>
+          <div className="mini-stat">
+            <span>API</span>
+            <strong className="stat-live" title={syncedAt ? `Synced ${syncedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : 'Waiting for first sync'}>
+              <i className={`live-dot ${status === 'online' ? 'on' : status === 'offline' ? 'off' : ''}`} />
+              {status === 'online' ? 'OK' : status === 'checking' ? '…' : 'DOWN'}
+            </strong>
+          </div>
           <div className="mini-stat"><span>Load</span><strong>{stats?.load ? stats.load[0].toFixed(2) : '…'}</strong></div>
         </div>
       </div>

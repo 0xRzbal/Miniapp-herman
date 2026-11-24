@@ -182,6 +182,7 @@ export default function Notes() {
   const [showNew, setShowNew] = useState(false);
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState<CatId>('all');
+  const [pinnedOnly, setPinnedOnly] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -306,14 +307,17 @@ export default function Notes() {
     return c;
   }, [notes]);
 
+  const pinnedCount = useMemo(() => notes.filter(n => n.pinned).length, [notes]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return notes.filter(n => {
+      if (pinnedOnly && !n.pinned) return false;
       if (cat !== 'all' && catOf(n) !== cat) return false;
       if (!q) return true;
       return `${n.title}\n${n.content}`.toLowerCase().includes(q);
     });
-  }, [notes, query, cat]);
+  }, [notes, query, cat, pinnedOnly]);
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease' }}>
@@ -369,6 +373,20 @@ export default function Notes() {
 
       {!loading && notes.length > 0 && (
         <div className="cat-bar" role="tablist" aria-label="Kategori catatan">
+          {pinnedCount > 0 && (
+            <button
+              type="button"
+              aria-pressed={pinnedOnly}
+              className={`cat-chip pin-chip${pinnedOnly ? ' active' : ''}`}
+              onClick={() => setPinnedOnly(v => !v)}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill={pinnedOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 17v5" /><path d="M9 10.5V4h6v6.5l2 3.5H7l2-3.5z" />
+              </svg>
+              Semat
+              <span className="cat-chip-count">{pinnedCount}</span>
+            </button>
+          )}
           {(['all', 'project', 'bounty', 'farm', 'infra', 'other'] as CatId[]).map(id => {
             const label = id === 'all' ? 'Semua' : id === 'other' ? 'Lainnya' : CAT_MATCHERS.find(m => m.id === id)!.label;
             const count = catCounts[id] || 0;
@@ -404,7 +422,11 @@ export default function Notes() {
       ) : filtered.length === 0 ? (
         <div className="empty-state">
           <strong>{notes.length === 0 ? 'Belum ada catatan' : 'Tidak ada hasil'}</strong>
-          {notes.length > 0 && cat !== 'all' && <div style={{ marginTop: 10 }}><button className="btn btn-sm" onClick={() => setCat('all')}>Reset kategori</button></div>}
+          {notes.length > 0 && (cat !== 'all' || pinnedOnly) && (
+            <div style={{ marginTop: 10 }}>
+              <button className="btn btn-sm" onClick={() => { setCat('all'); setPinnedOnly(false); }}>Reset filter</button>
+            </div>
+          )}
           {notes.length === 0 ? 'Tekan "+ Baru" untuk mulai mencatat.' : `Tidak ada catatan yang cocok dengan "${query}".`}
         </div>
       ) : (
