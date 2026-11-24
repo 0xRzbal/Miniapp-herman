@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { APP_VERSION } from '../config';
+import { APP_NAME, APP_VERSION } from '../config';
 import { SkeletonStats } from '../components/Skeleton';
 import { apiFetch } from '../lib/api';
 import { getTheme, applyTheme } from '../lib/theme';
@@ -114,6 +114,7 @@ export default function Home() {
         <div className="hero-top">
           <div>
             <h2>{greeting}</h2>
+            <p>{APP_NAME}</p>
           </div>
           <div className="hero-right">
             <div className="hero-clock">
