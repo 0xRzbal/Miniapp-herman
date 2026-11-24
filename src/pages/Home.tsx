@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { APP_NAME, APP_VERSION } from '../config';
 import { SkeletonStats } from '../components/Skeleton';
 import { apiFetch } from '../lib/api';
+import { getTheme, applyTheme } from '../lib/theme';
+import type { Theme } from '../lib/theme';
 
 interface MiniappOnly { hub: boolean; mail: boolean; router: boolean; }
 
@@ -45,6 +47,7 @@ export default function Home() {
   const [now, setNow] = useState(new Date());
   const [access, setAccess] = useState<MiniappOnly>({ hub: false, mail: false, router: false });
   const [accessLoading, setAccessLoading] = useState(true);
+  const [theme, setTheme] = useState<Theme>(getTheme);
 
   useEffect(() => {
     const check = async () => {
@@ -113,9 +116,31 @@ export default function Home() {
             <h2>{greeting}</h2>
             <p>{APP_NAME} · {stats?.host?.distro || 'VPS console'}</p>
           </div>
-          <div className="hero-clock">
-            <strong>{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</strong>
-            <span>{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+          <div className="hero-right">
+            <div className="hero-clock">
+              <strong>{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</strong>
+              <span>{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+            </div>
+            <button
+              className="hero-theme"
+              onClick={() => {
+                const next: Theme = theme === 'dark' ? 'light' : 'dark';
+                applyTheme(next);
+                setTheme(next);
+              }}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                </svg>
+              )}
+              {theme === 'dark' ? 'Dark' : 'Light'}
+            </button>
           </div>
         </div>
         <div className="hero-strip">

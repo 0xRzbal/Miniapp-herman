@@ -186,7 +186,6 @@ export default function Notes() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const bodyRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [detailId, setDetailId] = useState<string | null>(null);
 
   // press "/" to jump into search
   useEffect(() => {
@@ -305,16 +304,13 @@ export default function Notes() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const detailNote = detailId ? notes.find(n => n.id === detailId) || null : null;
-
   useEffect(() => {
-    if (!confirmId && !detailId && !showNew) return;
+    if (!confirmId && !showNew) return;
     return bindBackButton(() => {
       if (confirmId) { setConfirmId(null); return; }
-      if (detailId) { setDetailId(null); return; }
       if (showNew) cancel();
     });
-  }, [confirmId, detailId, showNew]);
+  }, [confirmId, showNew]);
 
   const catCounts = useMemo(() => {
     const c: Record<string, number> = { all: notes.length, project: 0, bounty: 0, farm: 0, infra: 0, other: 0 };
@@ -447,91 +443,62 @@ export default function Notes() {
               );
             }
             return (
-              <div
-                key={n.id}
-                className="card note-card"
-                role="button"
-                tabIndex={0}
-                onClick={() => { haptic('light'); setDetailId(n.id); }}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailId(n.id); } }}
-                style={{ marginBottom: 0 }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {n.title && (
-                      <div className="note-title">
-                        {n.pinned && <span className="note-pin-mark" title="Disematkan">●</span>}
-                        {renderText(n.title, query)}
-                      </div>
-                    )}
-                    <div
-                      ref={el => {
-                        bodyRefs.current[n.id] = el;
-                        if (el && !el.style.maxHeight) el.style.maxHeight = expanded.has(n.id) ? 'none' : `${CLAMP_H}px`;
-                      }}
-                      className={`note-body note-body-anim${expanded.has(n.id) ? '' : ' is-clamped'}`}
-                    >{renderText(n.content, query)}</div>
-                    {n.content.length > 220 && (
-                      <button
-                        className="note-more"
-                        onClick={e => { e.stopPropagation(); toggleExpand(n.id); }}
-                        onKeyDown={e => e.stopPropagation()}
-                      >
-                        {expanded.has(n.id) ? 'Ringkas ▲' : 'Selengkapnya ▼'}
-                      </button>
-                    )}
-                    {dates.length > 0 && (
-                      <div className="note-dates">
-                        {dates.map((d, i) => (
-                          <div key={i} className="note-date-row">
-                            <span style={{ color: 'var(--accent)' }}>⏳</span>
-                            <span>{fmtTime(d.toISOString())}</span>
-                            <CountdownLine target={d} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
+              <div key={n.id} className="card note-card" style={{ marginBottom: 0 }}>
+                <div className="note-card-head">
+                  <div className="note-title">
+                    {n.pinned && <span className="note-pin-mark" title="Disematkan">●</span>}
+                    {renderText(n.title || 'Tanpa judul', query)}
                   </div>
-                  <span className="note-card-chevron" aria-hidden="true">›</span>
+                  <div className="note-actions">
+                    <button
+                      className={`note-act${n.pinned ? ' on' : ''}`}
+                      aria-label={n.pinned ? 'Lepas semat' : 'Sematkan'}
+                      title={n.pinned ? 'Lepas semat' : 'Sematkan'}
+                      onClick={() => togglePin(n)}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill={n.pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 17v5" /><path d="M9 10.5V4h6v6.5l2 3.5H7l2-3.5z" />
+                      </svg>
+                    </button>
+                    <button className="note-act" aria-label="Edit" title="Edit" onClick={() => startEdit(n)}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                      </svg>
+                    </button>
+                    <button className="note-act danger" aria-label="Hapus" title="Hapus" onClick={() => setConfirmId(n.id)}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
+                <div
+                  ref={el => {
+                    bodyRefs.current[n.id] = el;
+                    if (el && !el.style.maxHeight) el.style.maxHeight = expanded.has(n.id) ? 'none' : `${CLAMP_H}px`;
+                  }}
+                  className={`note-body note-body-anim${expanded.has(n.id) ? '' : ' is-clamped'}`}
+                >{renderText(n.content, query)}</div>
+                {n.content.length > 220 && (
+                  <button className="note-more" onClick={() => toggleExpand(n.id)}>
+                    {expanded.has(n.id) ? 'Ringkas ▲' : 'Selengkapnya ▼'}
+                  </button>
+                )}
+                {dates.length > 0 && (
+                  <div className="note-dates">
+                    {dates.map((d, i) => (
+                      <div key={i} className="note-date-row">
+                        <span style={{ color: 'var(--accent)' }}>⏳</span>
+                        <span>{fmtTime(d.toISOString())}</span>
+                        <CountdownLine target={d} />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="note-meta">{fmtTime(n.updatedAt)}</div>
               </div>
             );
           })}
-        </div>
-      )}
-
-      {detailNote && (
-        <div className="confirm-overlay" onClick={() => setDetailId(null)}>
-          <div className="note-sheet" onClick={e => e.stopPropagation()}>
-            <div className="note-sheet-head">
-              <div className="note-sheet-title">
-                {detailNote.pinned && <span className="note-pin-mark" />}
-                {detailNote.title || 'Tanpa judul'}
-              </div>
-              <button className="note-sheet-close" aria-label="Tutup" onClick={() => setDetailId(null)}>×</button>
-            </div>
-            <div className="note-sheet-body">{renderText(detailNote.content, query)}</div>
-            {parseDates(`${detailNote.title}
-${detailNote.content}`).map((d, i) => (
-              <div key={i} className="note-date-row" style={{ marginTop: 8 }}>
-                <span style={{ color: 'var(--accent)' }}>⏳</span>
-                <span>{fmtTime(d.toISOString())}</span>
-                <CountdownLine target={d} />
-              </div>
-            ))}
-            <div className="note-sheet-meta">Diperbarui {fmtTime(detailNote.updatedAt)}</div>
-            <div className="note-sheet-actions">
-              <button
-                className={`btn btn-sm${detailNote.pinned ? ' btn-pin-active' : ''}`}
-                onClick={() => togglePin(detailNote)}
-              >
-                {detailNote.pinned ? 'Lepas semat' : 'Sematkan'}
-              </button>
-              <button className="btn btn-sm" onClick={() => { setDetailId(null); startEdit(detailNote); }}>Edit</button>
-              <button className="btn btn-sm btn-danger" onClick={() => { setDetailId(null); setConfirmId(detailNote.id); }}>Hapus</button>
-            </div>
-          </div>
         </div>
       )}
 

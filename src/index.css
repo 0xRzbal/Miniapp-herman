@@ -66,6 +66,12 @@
   --shadow-btn: var(--shadow-soft);
   --shadow-sm: var(--shadow-soft);
   --shadow-accent: var(--shadow-warm);
+  --ios-purple: #a855f7;
+  --ios-yellow: #f59e0b;
+  --ios-blue: var(--color-info);
+  --ios-green: var(--color-success);
+  --ios-red: var(--color-danger);
+
   --radius-sm: 8px;
   --radius: 10px;
   --radius-lg: 14px;
@@ -107,6 +113,9 @@
   --text-secondary: #b4b4b4;
   --border: var(--color-border);
   --border-strong: #4b4b4b;
+
+  --ios-purple: #bf5af2;
+  --ios-yellow: #fbbf24;
 
   color-scheme: dark;
 }
