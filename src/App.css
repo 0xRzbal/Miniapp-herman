@@ -937,3 +937,22 @@ mark.hl { background: rgba(229, 106, 74, 0.22); color: inherit; border-radius: 3
 /* Home: keep the colored meter lines prominent */
 .metric-track, .renew-track { height: 8px; background: var(--color-surface-3); }
 .metric-fill { filter: saturate(1.05); }
+
+/* Hero: tidy clock + icon-only theme toggle */
+.hero-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.hero-theme {
+  width: 30px; height: 30px; padding: 0; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid var(--color-border);
+  background: var(--color-surface-2); color: var(--color-text-muted);
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+.hero-theme:hover { color: var(--color-text-main); border-color: var(--color-border-strong, var(--color-border)); }
+.hero-theme:active { transform: scale(0.94); }
+
+/* Hero right cluster: button aligned to the clock's first line */
+.hero-right { align-items: flex-start; gap: 12px; }
+.hero-theme { margin-top: -1px; }
+.hero-strip { gap: 5px; }
+.hero-strip span { padding: 3px 8px; }
+.hero-strip span { padding: 3px 7px; }

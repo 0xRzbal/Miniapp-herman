@@ -114,7 +114,7 @@ export default function Home() {
         <div className="hero-top">
           <div>
             <h2>{greeting}</h2>
-            <p>{APP_NAME} · {stats?.host?.distro || 'VPS console'}</p>
+            <p>{APP_NAME} · {(stats?.host?.distro || 'VPS console').replace(/\s*LTS\s*$/, '')}</p>
           </div>
           <div className="hero-right">
             <div className="hero-clock">
@@ -122,7 +122,7 @@ export default function Home() {
               <span>{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
             </div>
             <button
-              className="hero-theme"
+              className="hero-theme" title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
               onClick={() => {
                 const next: Theme = theme === 'dark' ? 'light' : 'dark';
                 applyTheme(next);
@@ -139,12 +139,11 @@ export default function Home() {
                   <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
                 </svg>
               )}
-              {theme === 'dark' ? 'Dark' : 'Light'}
             </button>
           </div>
         </div>
         <div className="hero-strip">
-          <span>uptime {stats ? fmtUptime(stats.uptime) : '…'}</span>
+          <span>up {stats ? fmtUptime(stats.uptime) : '…'}</span>
           <span>load {stats?.load ? stats.load[0].toFixed(2) : '…'}</span>
           <span>ram {stats ? stats.memory.pct + '%' : '…'}</span>
           <span>disk {stats ? stats.disk.pct + '%' : '…'}</span>
@@ -201,13 +200,6 @@ export default function Home() {
             <Bar label="CPU" value={`${stats.cpu.usage}%`} pct={cpuPct} color="var(--color-primary)" />
             <Bar label="Memory" value={`${fmtBytes(stats.memory.used)} / ${fmtBytes(stats.memory.total)}`} pct={memPct} color="var(--ios-purple)" />
             <Bar label="Disk" value={`${fmtBytes(stats.disk.used)} / ${fmtBytes(stats.disk.total)}`} pct={diskPct} color="var(--ios-yellow)" />
-            <Bar
-              label="Load 1m"
-              value={stats.load ? `${stats.load[0].toFixed(2)} / ${stats.cpu.cores}${stats.load[0] > stats.cpu.cores ? ` · ${(stats.load[0] / stats.cpu.cores).toFixed(1)}×` : ''}` : '—'}
-              pct={stats.load ? (stats.load[0] / stats.cpu.cores) * 100 : 0}
-              color={stats.load && stats.load[0] > stats.cpu.cores ? 'var(--color-danger)' : 'var(--color-info)'}
-              over={!!stats.load && stats.load[0] > stats.cpu.cores}
-            />
           </div>
         ) : <div className="spinner" style={{ margin: '16px auto' }} />}
       </div>
