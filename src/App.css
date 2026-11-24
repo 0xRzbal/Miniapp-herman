@@ -962,3 +962,7 @@ mark.hl { background: rgba(229, 106, 74, 0.22); color: inherit; border-radius: 3
 .metric-head { margin-bottom: 8px; }
 .metric-value { font-size: 12.5px; }
 .metric-label { font-size: 12.5px; letter-spacing: 0.01em; }
+
+/* Server card: explicit days remaining */
+.renew-legend { font-size: 11px; align-items: center; }
+.renew-days { font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }

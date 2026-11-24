@@ -144,7 +144,7 @@ export default function Home() {
       </div>
 
       <div className="tile tile-server">
-        <div className="tile-title">Server<span>{daysLeft}d left</span></div>
+        <div className="tile-title">Server</div>
         <div className="list-item">
           <span className="list-item-label">Provider</span>
           <a href={VPS_INFO.url} target="_blank" rel="noopener noreferrer" className="list-item-value" style={{ textDecoration: 'none', color: 'var(--accent)' }}>{VPS_INFO.provider}</a>
@@ -162,7 +162,10 @@ export default function Home() {
         <div className="renew-track">
           <div className="renew-fill" style={{ width: `${Math.min(100, (daysLeft / 365) * 100)}%`, background: daysColor }} />
         </div>
-        <div className="renew-legend"><span>Mar 2026</span><span>Mar 2027</span></div>
+                <div className="renew-legend">
+          <span>Mar 2026</span>
+          <span className="renew-days" style={{ color: daysColor }}>{daysLeft} hari lagi</span>
+        </div>
       </div>
 
       <div className="tile tile-spec">
