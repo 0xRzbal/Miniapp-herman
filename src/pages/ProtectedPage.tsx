@@ -66,7 +66,7 @@ export default function ProtectedPage({ project }: { project: ProjectConfig }) {
             src={src}
             style={{
               width: '100%', height: 'calc(100vh - 130px)',
-              border: 'none', display: 'block', background: '#1a1a1a',
+              border: 'none', display: 'block', background: 'var(--color-bg)',
             }}
             title={project.name}
             onLoad={() => setLoaded(true)}

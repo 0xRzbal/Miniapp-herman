@@ -154,7 +154,7 @@ export default function FarmDashboard() {
               width: 22,
               height: 22,
               borderRadius: 11,
-              background: 'rgba(255,255,255,0.08)',
+              background: 'var(--color-surface-3)',
               color: 'var(--text-muted)',
               fontSize: 12,
               display: 'flex',

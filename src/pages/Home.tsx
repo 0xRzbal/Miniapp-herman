@@ -10,6 +10,8 @@ interface SystemStats {
   memory: { total: number; used: number; free: number; pct: string };
   disk: { total: number; used: number; available: number; pct: string };
   uptime: number;
+  procUptime?: number;
+  load?: number[];
   hostname: string;
   host?: { distro: string; kernel: string; arch: string; virt: string; hostname: string };
 }
@@ -22,15 +24,15 @@ const VPS_INFO = {
 const fmtBytes = (b: number) => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : b >= 1048576 ? (b / 1048576).toFixed(0) + ' MB' : (b / 1024).toFixed(0) + ' KB';
 const fmtUptime = (s: number) => { const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`; };
 
-function StatBar({ label, value, pct, color }: { label: string; value: string; pct: number; color: string }) {
+function Bar({ label, value, pct, color, over }: { label: string; value: string; pct: number; color: string; over?: boolean }) {
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
-        <span style={{ fontSize: 14, fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    <div className="metric">
+      <div className="metric-head">
+        <span className="metric-label">{label}</span>
+        <span className="metric-value" style={{ color }}>{value}</span>
       </div>
-      <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.8s cubic-bezier(0.22, 1, 0.36, 1)' }} />
+      <div className="metric-track">
+        <div className={`metric-fill ${over ? 'over' : ''}`} style={{ width: `${Math.min(100, pct)}%`, background: color }} />
       </div>
     </div>
   );
@@ -85,11 +87,10 @@ export default function Home() {
 
   if (!ready) {
     return (
-      <div style={{ animation: 'fade-in 0.25s ease' }}>
-        <div className="section-title">Server</div>
-        <SkeletonStats rows={3} />
-        <div className="section-title">Spesifikasi</div>
-        <SkeletonStats rows={4} />
+      <div className="bento" style={{ animation: 'fade-in 0.25s ease' }}>
+        <div className="tile tile-hero"><SkeletonStats rows={2} /></div>
+        <div className="tile tile-server"><SkeletonStats rows={3} /></div>
+        <div className="tile tile-spec"><SkeletonStats rows={4} /></div>
       </div>
     );
   }
@@ -102,20 +103,37 @@ export default function Home() {
   const daysLeft = Math.max(0, Math.ceil((VPS_INFO.expiryDate.getTime() - now.getTime()) / 86400000));
   const arch = stats?.host ? (stats.host.arch === 'x64' ? 'x86_64' : stats.host.arch) : '';
   const cpuShort = stats ? stats.cpu.model.replace(' Processor', '').replace(/\(.*?\)/g, '').replace(/\s+/g, ' ').trim() : '';
+  const daysColor = daysLeft <= 30 ? 'var(--ios-red)' : daysLeft <= 90 ? 'var(--ios-yellow)' : 'var(--ios-green)';
 
   return (
-    <div style={{ animation: 'spring-in 0.4s ease' }}>
-      <div className="hero-card">
-        <h2>{greeting}</h2>
-        <p>Welcome to {APP_NAME}</p>
+    <div className="bento" style={{ animation: 'spring-in 0.35s ease' }}>
+      <div className="tile tile-hero">
+        <div className="hero-top">
+          <div>
+            <h2>{greeting}</h2>
+            <p>{APP_NAME} · {stats?.host?.distro || 'VPS console'}</p>
+          </div>
+          <div className="hero-clock">
+            <strong>{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</strong>
+            <span>{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+          </div>
+        </div>
+        <div className="hero-strip">
+          <span>uptime {stats ? fmtUptime(stats.uptime) : '…'}</span>
+          <span>load {stats?.load ? stats.load[0].toFixed(2) : '…'}</span>
+          <span>ram {stats ? stats.memory.pct + '%' : '…'}</span>
+          <span>disk {stats ? stats.disk.pct + '%' : '…'}</span>
+        </div>
+        <div className="tile-hero-foot">
+          <span className={`badge ${status === 'online' ? 'ok' : 'bad'}`}>
+            {status === 'checking' ? 'checking' : status === 'online' ? 'Online' : 'Offline'}
+          </span>
+          <span className="tile-hero-meta">{stats?.host?.hostname || '—'} · up {stats ? fmtUptime(stats.uptime) : '…'}</span>
+        </div>
       </div>
 
-      <div className="section-title">Server</div>
-      <div className="card">
-        <div className="list-item">
-          <span className="list-item-label">Status</span>
-          <span className={`badge ${status === 'online' ? 'ok' : 'bad'}`}>{status === 'checking' ? '...' : status === 'online' ? 'Online' : 'Offline'}</span>
-        </div>
+      <div className="tile tile-server">
+        <div className="tile-title">Server<span>{daysLeft}d left</span></div>
         <div className="list-item">
           <span className="list-item-label">Provider</span>
           <a href={VPS_INFO.url} target="_blank" rel="noopener noreferrer" className="list-item-value" style={{ textDecoration: 'none', color: 'var(--accent)' }}>{VPS_INFO.provider}</a>
@@ -126,29 +144,18 @@ export default function Home() {
         </div>
         <div className="list-item">
           <span className="list-item-label">Expires</span>
-          <span className="list-item-value" style={{ color: daysLeft <= 30 ? '#ef4444' : daysLeft <= 90 ? '#eab308' : '#22c55e' }}>
+          <span className="list-item-value" style={{ color: daysColor }}>
             {VPS_INFO.expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            <span className={`badge ${daysLeft <= 30 ? 'bad' : 'ok'}`} style={{ marginLeft: 8 }}>{daysLeft}d</span>
           </span>
         </div>
-        <div style={{ padding: '0 16px 16px' }}>
-          <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', borderRadius: 3,
-              width: `${Math.min(100, (daysLeft / 365) * 100)}%`,
-              background: daysLeft <= 30 ? '#ef4444' : daysLeft <= 90 ? '#eab308' : '#22c55e',
-              transition: 'width 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
-            }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mar 24, 2026</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mar 24, 2027</span>
-          </div>
+        <div className="renew-track">
+          <div className="renew-fill" style={{ width: `${Math.min(100, (daysLeft / 365) * 100)}%`, background: daysColor }} />
         </div>
+        <div className="renew-legend"><span>Mar 2026</span><span>Mar 2027</span></div>
       </div>
 
-      <div className="section-title">Spesifikasi</div>
-      <div className="card spec-card">
+      <div className="tile tile-spec">
+        <div className="tile-title">Specs</div>
         <table className="spec-table">
           <tbody>
             <tr><th>CPU</th><td title={stats?.cpu.model || ''}>{stats ? `${cpuShort} · ${stats.cpu.cores} vCPU` : '...'}</td></tr>
@@ -162,28 +169,38 @@ export default function Home() {
         </table>
       </div>
 
-      <div className="section-title">System</div>
-      <div className="card">
-        <div className="card-inner" style={{ padding: '16px' }}>
-          {stats ? (
-            <>
-              <StatBar label="CPU" value={`${stats.cpu.usage}%`} pct={cpuPct} color="#ff6b4a" />
-              <StatBar label="Memory" value={`${fmtBytes(stats.memory.used)} / ${fmtBytes(stats.memory.total)}`} pct={memPct} color="#a855f7" />
-              <StatBar label="Disk" value={`${fmtBytes(stats.disk.used)} / ${fmtBytes(stats.disk.total)}`} pct={diskPct} color="#f59e0b" />
-            </>
-          ) : <div className="spinner" style={{ margin: '20px auto' }} />}
+      <div className="tile tile-system">
+        <div className="tile-title">System</div>
+        {stats ? (
+          <div className="metric-list">
+            <Bar label="CPU" value={`${stats.cpu.usage}%`} pct={cpuPct} color="var(--color-primary)" />
+            <Bar label="Memory" value={`${fmtBytes(stats.memory.used)} / ${fmtBytes(stats.memory.total)}`} pct={memPct} color="var(--ios-purple)" />
+            <Bar label="Disk" value={`${fmtBytes(stats.disk.used)} / ${fmtBytes(stats.disk.total)}`} pct={diskPct} color="var(--ios-yellow)" />
+            <Bar
+              label="Load 1m"
+              value={stats.load ? `${stats.load[0].toFixed(2)} / ${stats.cpu.cores}${stats.load[0] > stats.cpu.cores ? ` · ${(stats.load[0] / stats.cpu.cores).toFixed(1)}×` : ''}` : '—'}
+              pct={stats.load ? (stats.load[0] / stats.cpu.cores) * 100 : 0}
+              color={stats.load && stats.load[0] > stats.cpu.cores ? 'var(--color-danger)' : 'var(--color-info)'}
+              over={!!stats.load && stats.load[0] > stats.cpu.cores}
+            />
+          </div>
+        ) : <div className="spinner" style={{ margin: '16px auto' }} />}
+      </div>
+
+      <div className="tile tile-overview">
+        <div className="tile-title">Overview</div>
+        <div className="mini-grid">
+          <div className="mini-stat"><span>Uptime</span><strong>{stats ? fmtUptime(stats.uptime) : '…'}</strong></div>
+          <div className="mini-stat"><span>Cores</span><strong>{stats ? stats.cpu.cores : '…'}</strong></div>
+          <div className="mini-stat"><span>API</span><strong style={{ color: status === 'online' ? 'var(--color-success)' : 'var(--color-danger)' }}>{status === 'online' ? 'OK' : status === 'checking' ? '…' : 'DOWN'}</strong></div>
+          <div className="mini-stat"><span>Load</span><strong>{stats?.load ? stats.load[0].toFixed(2) : '…'}</strong></div>
+          <div className="mini-stat"><span>RAM</span><strong>{stats ? stats.memory.pct + '%' : '…'}</strong></div>
+          <div className="mini-stat"><span>Disk</span><strong>{stats ? stats.disk.pct + '%' : '…'}</strong></div>
         </div>
       </div>
 
-      <div className="section-title">Overview</div>
-      <div className="card">
-        <div className="list-item"><span className="list-item-label">Uptime</span><span className="list-item-value">{stats ? fmtUptime(stats.uptime) : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">Cores</span><span className="list-item-value">{stats ? stats.cpu.cores : '...'}</span></div>
-        <div className="list-item"><span className="list-item-label">API</span><span className="status"><span className={`status-dot ${status}`} />{status === 'online' ? 'Operational' : 'Offline'}</span></div>
-      </div>
-
-      <div className="section-title">Access Control</div>
-      <div className="card ac-card">
+      <div className="tile tile-access">
+        <div className="tile-title">Access Control<span>v{APP_VERSION}</span></div>
         {([
           { key: 'hub' as const, label: 'Full Access', desc: 'Block external browser access' },
           { key: 'mail' as const, label: 'Mail', desc: 'Block JoeMail external access' },
@@ -202,13 +219,6 @@ export default function Home() {
             />
           </div>
         ))}
-        <div className="ac-row ac-row-last">
-          <div className="ac-text">
-            <div className="ac-label">Version</div>
-            <div className="ac-desc">{APP_NAME}</div>
-          </div>
-          <span className="ver-chip">v{APP_VERSION}</span>
-        </div>
       </div>
     </div>
   );

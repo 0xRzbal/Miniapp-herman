@@ -39,7 +39,7 @@ export default function MailPage() {
         <iframe
           ref={iframeRef}
           src={mailSrc}
-          style={{ width: '100%', height: 'calc(100vh - 130px)', border: 'none', display: 'block', background: '#1a1a1a' }}
+          style={{ width: '100%', height: 'calc(100vh - 130px)', border: 'none', display: 'block', background: 'var(--color-bg)' }}
           title="JoeMail"
           onLoad={() => setLoading(false)}
         />

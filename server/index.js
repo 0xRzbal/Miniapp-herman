@@ -690,7 +690,8 @@ app.get('/api/system', (_req, res) => {
   res.json({
     cpu: { cores: cpus.length, usage: cpuPct, model: cpus[0]?.model || 'Unknown' },
     memory: { total: totalMem, used: usedMem, free: freeMem, pct: ((usedMem / totalMem) * 100).toFixed(1) },
-    disk, uptime: process.uptime(), hostname: os.hostname(),
+    disk, uptime: os.uptime(), procUptime: process.uptime(), hostname: os.hostname(),
+    load: os.loadavg().map(n => Math.round(n * 100) / 100),
     services: readServices(),
     host: readHostInfo(),
   });

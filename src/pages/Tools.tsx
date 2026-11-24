@@ -16,7 +16,7 @@ const CHK_OFF = { width: 18, height: 18, borderRadius: 4, border: '2px solid var
 const FIELD_BTN = (on: boolean) => ({
   display: 'flex' as const, alignItems: 'center' as const, gap: 10, padding: '8px 12px', borderRadius: 8,
   border: `1.5px solid ${on ? 'rgba(255,255,255,.25)' : 'var(--border)'}`,
-  background: on ? 'rgba(255,255,255,.04)' : 'transparent',
+  background: on ? 'var(--color-surface-2)' : 'transparent',
   color: 'var(--text)', fontSize: 13, fontFamily: "'SF Mono', 'Fira Code', monospace",
   cursor: 'pointer' as const, textAlign: 'left' as const, width: '100%' as const, transition: 'all 0.15s',
 });
@@ -152,7 +152,7 @@ function ExtractFieldsTool({ onResult }: { onResult: (r: string) => void }) {
               <button key={i} onClick={() => toggle(i)} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
                 border: `1.5px solid ${selected.has(i) ? 'rgba(255,255,255,.25)' : 'var(--border)'}`,
-                background: selected.has(i) ? 'rgba(255,255,255,.04)' : 'transparent',
+                background: selected.has(i) ? 'var(--color-surface-2)' : 'transparent',
                 color: 'var(--text)', fontSize: 13, fontFamily: "'SF Mono', 'Fira Code', monospace",
                 cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s',
               }}>

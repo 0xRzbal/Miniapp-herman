@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
@@ -12,19 +12,41 @@
     <link rel="preload" href="/fonts/Inter-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/Inter-600.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/Inter-700.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem('hub-theme'); } catch (e) {}
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        document.documentElement.style.colorScheme = t;
+        document.documentElement.setAttribute('data-theme', t);
+        var c = t === 'dark' ? '#1a1a1a' : '#fdfaf6';
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', c);
+        document.write('<style>#splash{background:' + c + '}</style>');
+      })();
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js" async></script>
     <script>
       (function() {
+        function palette() {
+          var dark = document.documentElement.classList.contains('dark');
+          return dark ? '#1a1a1a' : '#fdfaf6';
+        }
         function initTg() {
           var tg = window.Telegram && window.Telegram.WebApp;
           if (tg) {
+            var c = palette();
             tg.expand(); tg.ready();
-            tg.setHeaderColor('#1a1a1a');
-            tg.setBackgroundColor('#1a1a1a');
+            if (tg.setHeaderColor) tg.setHeaderColor(c);
+            if (tg.setBackgroundColor) tg.setBackgroundColor(c);
           }
         }
         initTg();
         window.addEventListener('load', initTg);
+        window.addEventListener('hub-theme-change', initTg);
       })();
     </script>
     <style>
@@ -33,7 +55,7 @@
       @font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/Inter-700.woff2') format('woff2')}
       #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#1a1a1a;z-index:9999;transition:opacity .3s}
       #splash.hide{opacity:0;pointer-events:none}
-      #splash .dot{width:8px;height:8px;background:#ff6b4a;border-radius:50%;animation:pulse 1s ease infinite}
+      #splash .dot{width:8px;height:8px;background:#e56a4a;border-radius:50%;animation:pulse 1s ease infinite}
       @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
     </style>
   </head>
