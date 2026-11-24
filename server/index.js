@@ -354,10 +354,6 @@ app.get('/api/tools', (_req, res) => {
   })) });
 });
 
-// Extended Tools API
-import toolsRouter from './tools-api.js';
-app.use('/api/tools', toolsRouter);
-
 // Generic tool execution with validation
 app.post('/api/tools/:id', toolLimiter, (req, res) => {
   const handler = toolHandlers[req.params.id];
@@ -540,25 +536,6 @@ app.post('/api/schedules/:id/toggle', requireAuth, (req, res) => {
     res.json({ schedule: task });
   } else {
     res.status(404).json({ error: 'Schedule not found' });
-  }
-});
-
-// ── Job History Export ───────────────────────────────────────
-app.get('/api/tools/jobs/export', requireAuth, (req, res) => {
-  const format = req.query.format || 'json';
-  const jobsData = loadJSON(JOBS_FILE, {});
-  const jobsList = Object.values(jobsData);
-  
-  if (format === 'csv') {
-    const headers = 'id,toolId,status,output,error,startedAt,finishedAt\n';
-    const rows = jobsList.map(j => 
-      `${j.id},${j.toolId},${j.status},"${(j.output||'').replace(/"/g,'""')}","${(j.error||'').replace(/"/g,'""')}",${j.startedAt||''},${j.finishedAt||''}`
-    ).join('\n');
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=jobs.csv');
-    res.send(headers + rows);
-  } else {
-    res.json({ jobs: jobsList });
   }
 });
 

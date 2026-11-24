@@ -37,7 +37,6 @@ export const ICONS: Record<string, string> = {
 // Static tabs — icon stores the KEY name, not the path
 const staticTabs: Tab[] = [
   { id: 'home', label: 'Home', icon: 'home', type: 'page' },
-  { id: 'farm', label: 'Farm', icon: 'farm', type: 'page' },
   { id: 'mail', label: 'Mail', icon: 'mail', type: 'page' },
   { id: 'tools', label: 'Tools', icon: 'tools', type: 'page' },
   { id: 'notes', label: 'Notes', icon: 'doc', type: 'page' },

@@ -10,7 +10,6 @@ import AuthModal from './components/AuthModal';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const Home = lazy(() => import('./pages/Home'));
-const FarmDashboard = lazy(() => import('./pages/FarmDashboard'));
 const MailPage = lazy(() => import('./pages/MailPage'));
 const Tools = lazy(() => import('./pages/Tools'));
 const Notes = lazy(() => import('./pages/Notes'));
@@ -21,7 +20,7 @@ function makeProjectPage(project: ProjectConfig): React.FC {
 }
 
 const staticPages: Record<string, React.LazyExoticComponent<React.FC>> = {
-  home: Home, farm: FarmDashboard, mail: MailPage, tools: Tools, notes: Notes,
+  home: Home, mail: MailPage, tools: Tools, notes: Notes,
 };
 
 function buildPageMap(): Record<string, React.LazyExoticComponent<React.FC>> {
