@@ -17,7 +17,7 @@
         var t = null;
         try { t = localStorage.getItem('hub-theme'); } catch (e) {}
         if (t !== 'light' && t !== 'dark') {
-          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          t = 'dark';
         }
         document.documentElement.classList.toggle('dark', t === 'dark');
         document.documentElement.style.colorScheme = t;
