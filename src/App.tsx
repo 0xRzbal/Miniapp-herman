@@ -83,6 +83,11 @@ export default function App() {
 
   const switchTab = useCallback((id: string) => {
     haptic('light');
+    if (id === activeTabRef.current) {
+      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollMemory.current[id] = 0;
+      return;
+    }
     setActiveTab(id);
     window.history.replaceState(null, '', `#${id}`);
     try { localStorage.setItem('activeTab', id); } catch {}

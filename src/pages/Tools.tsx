@@ -7,8 +7,8 @@ interface ToolOption { label: string; value: string; }
 interface Tool { id: string; name: string; icon: string; description: string; placeholder: string; options?: ToolOption[]; hasDelimiter?: boolean; }
 
 const LOCAL_TOOLS: Tool[] = [
-  { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Group entries by paragraph, pick columns, join with delimiter.', placeholder: 'Paste text...' },
-  { id: 'secret-link', name: 'Secret Link', icon: '1x', description: 'Burn-after-read link — teks hancur setelah dibuka sekali.', placeholder: '' },
+  { id: 'pair-lines', name: 'Pair Lines', icon: '||', description: 'Kelompokkan per paragraf, pilih kolom, gabung dengan pemisah.', placeholder: 'Tempel teks...' },
+  { id: 'secret-link', name: 'Secret Link', icon: '1x', description: 'Tautan sekali baca — teks hangus setelah dibuka.', placeholder: '' },
 ];
 
 const CHK_ON = { width: 18, height: 18, borderRadius: 4, border: '2px solid rgba(255,255,255,.4)', background: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--bg)', flexShrink: 0 } as const;

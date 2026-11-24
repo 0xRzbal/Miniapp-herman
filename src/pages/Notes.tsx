@@ -187,6 +187,7 @@ export default function Notes() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const bodyRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pressTimer = useRef<number | null>(null);
 
   // press "/" to jump into search
   useEffect(() => {
@@ -303,6 +304,23 @@ export default function Notes() {
   };
 
   const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
+
+  const cancelPress = () => {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  };
+
+  const startPress = (id: string) => {
+    if (selectMode) return;
+    cancelPress();
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = null;
+      haptic('medium');
+      setSelectMode(true);
+      setSelected(new Set([id]));
+    }, 450);
+  };
+
+  useEffect(() => cancelPress, []);
 
   const toggleSelect = (id: string) =>
     setSelected(prev => {
@@ -527,6 +545,11 @@ export default function Notes() {
                 className={`card note-card${selectMode ? ' selectable' : ''}${selected.has(n.id) ? ' selected' : ''}`}
                 style={{ marginBottom: 0 }}
                 onClick={selectMode ? () => toggleSelect(n.id) : undefined}
+                onPointerDown={selectMode ? undefined : () => startPress(n.id)}
+                onPointerUp={cancelPress}
+                onPointerLeave={cancelPress}
+                onPointerCancel={cancelPress}
+                onContextMenu={e => { if (pressTimer.current) e.preventDefault(); }}
               >
                 <div className="note-card-head">
                   {selectMode && (

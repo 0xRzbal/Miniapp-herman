@@ -596,7 +596,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 
 /* ── Tools grid ───────────────────────────────────────────── */
-.tools-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 4px; }
+.tools-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 4px; }
 
 .tool-tile {
   display: flex; align-items: center; gap: 12px; text-align: left;
@@ -624,7 +624,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 .tool-tile-desc {
   font-size: 11.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.45;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
 }
 
 
@@ -1184,3 +1185,17 @@ mark.hl { background: rgba(229, 106, 74, 0.22); color: inherit; border-radius: 3
 @media (min-width: 900px) {
   .bulk-bar { left: auto; right: 28px; bottom: 22px; min-width: 430px; }
 }
+
+/* ---------- Embedded frames (mail / router) ---------- */
+.embed-box {
+  position: relative; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border); background: var(--bg-card);
+  height: calc(100dvh - 140px); min-height: 380px;
+}
+.embed-box iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--color-bg); }
+.embed-skel {
+  position: absolute; inset: 0; z-index: 2; background: var(--bg);
+  display: flex; flex-direction: column; gap: 10px; padding: 16px;
+}
+.embed-skel-row { display: flex; align-items: center; gap: 10px; }
+@media (min-width: 900px) { .embed-box { height: calc(100dvh - 96px); } }

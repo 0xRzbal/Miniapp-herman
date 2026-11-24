@@ -120,8 +120,8 @@ registerTool({
   id: 'transform',
   name: 'Text Transform',
   icon: 'Aa',
-  description: 'Transform, convert, encode text.',
-  placeholder: 'Enter text to transform...',
+  description: 'Ubah, konversi, encode teks.',
+  placeholder: 'Tempel teks di sini...',
   options: [
     { label: 'UPPERCASE', value: 'upper' },
     { label: 'lowercase', value: 'lower' },
@@ -180,7 +180,7 @@ registerTool({
   id: 'format-json',
   name: 'JSON Tools',
   icon: '{ }',
-  description: 'Format, validate, convert JSON.',
+  description: 'Rapikan, validasi, konversi JSON.',
   placeholder: 'Paste JSON here...',
   options: [
     { label: 'Prettify', value: 'prettify' },
@@ -252,7 +252,7 @@ registerTool({
   id: 'strip-text',
   name: 'Extract Fields',
   icon: '|x|',
-  description: 'Split, extract, regex match from text.',
+  description: 'Pecah, ambil kolom, dan cocokkan regex.',
   placeholder: 'Paste text here...',
   hasDelimiter: true,
   options: [
